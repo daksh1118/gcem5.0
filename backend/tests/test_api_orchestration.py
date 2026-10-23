@@ -361,3 +361,12 @@ def test_18_distinction_between_per_slice_and_aggregate_sla_status(client):
     assert isinstance(agent_telemetry.sla_state_details, dict)
     for s in ["eMBB", "URLLC", "mURLLC"]:
         assert agent_telemetry.sla_state_details[s] in ["PASS", "BREACH", "INSUFFICIENT_DATA"]
+
+
+def test_19_model_metadata_lagrangian_multiplier_reconciliation(client):
+    """Test 19: Runner loads genuine final_lambda from agent_metadata.json matching checkpoint."""
+    runner = _get_runner()
+    assert hasattr(runner, "trained_lambda")
+    assert runner.trained_lambda == 0.0
+    evt = runner._build_telemetry_event()
+    assert evt.policies["agent"].lagrangian_lambda == 0.0

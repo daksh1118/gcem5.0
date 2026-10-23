@@ -18,12 +18,12 @@ This document prepares the presentation team for technical interrogation by tele
 **Defense:**
 - We frame resource allocation as a **Constrained Markov Decision Process (CMDP)**:
   $$\max_{\pi} \mathbb{E}\left[ \sum_{t} \gamma^t R_{\text{perf}}(s_t, a_t) \right] \quad \text{subject to} \quad \mathbb{E}[C_{\text{crit}}(s_t)] \le d_{\text{budget}}$$
-- Here, $R_{\text{perf}}$ rewards throughput and log-utility fairness, while $C_{\text{crit}}$ penalizes packet drops and queue buildup specifically on critical slices (URLLC and mURLLC).
+- Here, $R_{\text{perf}}$ rewards throughput and log-utility fairness, while $C_{\text{crit}}$ penalizes packet drops specifically on critical slices (URLLC and mURLLC).
 - The Lagrangian objective is formulated as:
   $$L(\pi, \lambda) = R_{\text{perf}} - \lambda \cdot (C_{\text{crit}} - d_{\text{budget}})$$
 - During training, $\lambda$ is updated via dual gradient ascent:
   $$\lambda \leftarrow \max\left(0, \lambda + \alpha_{\lambda} \cdot (C_{\text{crit}} - d_{\text{budget}})\right)$$
-- If the policy allows critical-packet drops, $\lambda$ increases, magnifying the penalty and forcing the policy gradient to prioritize critical slices. When the network stabilizes, $\lambda$ decays.
+- If the policy allows critical-packet drops exceeding $d_{\text{budget}} = 0.01$, $\lambda$ increases, magnifying the penalty and forcing the policy gradient to prioritize critical slices. When the network operates within budget, $\lambda$ remains non-negative and decays.
 
 ---
 
@@ -90,4 +90,26 @@ This document prepares the presentation team for technical interrogation by tele
 - **No.** Machine learning cannot create physical bandwidth or compute out of thin air. When the total offered load exceeds the physical Shannon capacity of the base station (e.g., during a simultaneous multi-gigabit eMBB surge and mURLLC storm), *some* packets must either be delayed or dropped.
 - **What SLA Guardian DOES Guarantee:**
   1. The **Safety Shield guarantees zero illegal allocations** (allocations always sum to $\le 1.0$ with $\ge 0.10$ slice reservations).
-  2. The **Lagrangian PPO Agent guarantees Pareto-optimal prioritization**: it sacrifices high-bandwidth best-effort eMBB packets in order to maintain maximum delivery and minimal latency for mission-critical URLLC and mURLLC streams.
+  2. The **Agent maintains maximum allocation stability**: unlike heuristics that oscillate wildly (churn $> 1000$), PPO avoids thrashing the base station scheduler.
+
+---
+
+### Q10: Why did the PPO agent underperform the heuristic during the URLLC burst and mURLLC storm in your final benchmark?
+
+**Defense:**
+- **Scientific Honesty & Root Cause:** Our comprehensive integrity audit (`docs/phase8/final_claims_audit.md`) traced this directly to the training regime:
+  1. The model was trained exclusively on nominal load (`scenario: "normal"`). In nominal conditions, critical slice demand (8 Mbps URLLC, 15 Mbps mURLLC) easily fits inside the slice reservation minimums.
+  2. Because critical drops never exceeded the 1% cost budget during training, the Lagrangian multiplier stayed at $\lambda = 0.0$.
+  3. Consequently, the policy learned an optimal nominal allocation prioritizing eMBB throughput ($\approx 48\%$ eMBB, $\approx 30\%$ URLLC, $\approx 21\%$ mURLLC).
+  4. When exposed out-of-distribution to extreme critical traffic spikes, the agent did not dynamically shed eMBB load, resulting in 74.46% URLLC PDR and 34.92% mURLLC PDR.
+  5. The reactive heuristic achieved higher critical delivery by aggressively shedding eMBB, but suffered massive allocation churn ($1,171.3$ vs PPO's $38.8$).
+- **The Research Value:** This demonstrates the fundamental telecom trade-off between control stability and aggressive reactive throttling, and establishes the clear necessity of multi-scenario curriculum training in future work.
+
+---
+
+### Q11: Why is the Lagrangian multiplier $\lambda = 0.0$ in your saved checkpoint metadata?
+
+**Defense:**
+- In `models/agent_metadata.json` and `runs/log.csv`, $\lambda = 0.0$ because throughout all 102 training episodes on scenario `normal`, the empirical critical cost was $0.0007 - 0.0092$, strictly below the threshold $d_{\text{budget}} = 0.01$.
+- By definition of Karush-Kuhn-Tucker (KKT) conditions in constrained optimization, when the constraint is inactive (strictly feasible), the dual multiplier is complementary and equals zero ($\lambda^* = 0$).
+- Our API orchestrator and dashboard now dynamically reflect this true metadata value (`0.000`).

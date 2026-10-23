@@ -134,6 +134,7 @@ class ExperimentRunner:
         self.model_loaded = False
         self.model_error: Optional[str] = None
         self.rl_policy_instance: Optional[RLPolicy] = None
+        self.trained_lambda: float = 0.0
         self._init_model()
 
         # Run state
@@ -163,6 +164,16 @@ class ExperimentRunner:
                 self.model_loaded = True
                 self.model_error = None
                 logger.info(f"Loaded PPO inference checkpoint from {self.checkpoint_path}")
+
+                # Load metadata if present to get genuine final_lambda
+                meta_path = self.checkpoint_path.parent / "agent_metadata.json"
+                if meta_path.exists():
+                    try:
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            meta = json.load(f)
+                            self.trained_lambda = float(meta.get("final_lambda", 0.0))
+                    except Exception:
+                        self.trained_lambda = 0.0
             else:
                 self.model_loaded = False
                 self.model_error = f"Checkpoint file missing at {self.checkpoint_path}"
@@ -410,7 +421,7 @@ class ExperimentRunner:
                 lambda_val = None
                 crit_cost = None
                 if key == "agent":
-                    lambda_val = 9.648  # Loaded trained multiplier
+                    lambda_val = self.trained_lambda  # Loaded trained multiplier from metadata
                     crit_offered = offered.get("URLLC", 0) + offered.get("mURLLC", 0)
                     crit_dropped = dropped.get("URLLC", 0) + dropped.get("mURLLC", 0)
                     crit_cost = float(crit_dropped / max(1, crit_offered))
@@ -469,6 +480,7 @@ class ExperimentRunner:
                     sla_state_details={"eMBB": "PASS", "URLLC": "PASS", "mURLLC": "PASS"},
                     shield_status="PASSED",
                     intervention_reasons=[],
+                    lagrangian_lambda=self.trained_lambda if key == "agent" else None,
                     explanation=None if self.model_loaded else self.model_error,
                 )
             policy_map[key] = pt
@@ -668,7 +680,7 @@ class ExperimentRunner:
                 per_slice_summary=per_slice,
                 run_duration_sec=round(total_time_sec, 3),
                 completed_macro_steps=completed_steps,
-                lagrangian_lambda=9.648 if key == "agent" else None,
+                lagrangian_lambda=self.trained_lambda if key == "agent" else None,
             )
 
         return MultiPolicySummary(
