@@ -29,6 +29,11 @@ class DecisionRecord(BaseModel):
     rejection_reason: Optional[str] = None
     step_metrics: Optional[StepMetrics] = None
 
+    @property
+    def executed_action(self) -> Optional[ExecutedAction]:
+        """Convenience accessor for safety_result.executed_action."""
+        return self.safety_result.executed_action
+
 
 class PolicyExecutionPipeline:
     """

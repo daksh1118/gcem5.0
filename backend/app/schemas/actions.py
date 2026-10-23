@@ -183,3 +183,13 @@ class SafetyResult(BaseModel):
         ge=0,
         description="Simulation step index where this validation took place."
     )
+
+    @property
+    def is_accepted(self) -> bool:
+        """True if the action was approved or corrected for execution."""
+        return self.validation_status != SafetyValidationStatus.REJECTED and self.executed_action is not None
+
+    @property
+    def reasons(self) -> List[str]:
+        """Convenience alias for intervention_reasons."""
+        return self.intervention_reasons
