@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLA Guardian — Autonomous 5G Network Slicing & RL Allocation Console</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js CDN with graceful fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ====================================================================
+       TOP NAVIGATION BAR & SYSTEM HEALTH
+       ==================================================================== -->
+  <header class="top-nav">
+    <div class="brand-section">
+      <div id="liveBeacon" class="live-beacon"></div>
+      <div>
+        <div class="brand-title">SLA GUARDIAN</div>
+        <div class="brand-subtitle">Autonomous 5G Slice Orchestration & Constrained PPO Shield</div>
+      </div>
+    </div>
+
+    <div class="top-telemetry-strip">
+      <div class="telemetry-pill">
+        <span class="label">WS:</span>
+        <span id="connStatusText" class="val">CONNECTING</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="label">Model:</span>
+        <span id="modelBadge" class="status-badge idle">CHECKING</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="label">Status:</span>
+        <span id="runStatusBadge" class="status-badge idle">IDLE</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="label">Step:</span>
+        <span id="currentMacroStep" class="val">0</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="label">Sim Time:</span>
+        <span id="simTimeSec" class="val">0.00s</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       SCENARIO CONTROL TOOLBAR & SPIKE INJECTION
+       ==================================================================== -->
+  <section class="control-toolbar">
+    <div class="control-group">
+      <span class="control-label">Scenario:</span>
+      <select id="scenarioSelect" title="Select 5G Traffic Profile">
+        <option value="normal">NORMAL - Balanced Nominal Load</option>
+        <option value="embb_surge">EMBB_SURGE - 4K Video Surge</option>
+        <option value="urllc_burst">URLLC_BURST - Factory Tactile Burst</option>
+        <option value="murllc_storm">MURLLC_STORM - Massive IoT Storm</option>
+        <option value="mixed_stress">MIXED_STRESS - Extreme Overload</option>
+      </select>
+
+      <span class="control-label">Seed:</span>
+      <input type="number" id="seedInput" value="42" min="1" max="99999" style="width: 60px;" title="PRNG Seed">
+
+      <span class="control-label">Steps:</span>
+      <input type="number" id="maxStepsInput" value="100" min="10" max="1000" style="width: 65px;" title="Macro Steps">
+
+      <button id="btnStart" class="btn btn-primary" title="Launch Experiment">▶ Start</button>
+      <button id="btnPause" class="btn" title="Pause Experiment">⏸ Pause</button>
+      <button id="btnResume" class="btn" title="Resume Experiment">⏯ Resume</button>
+      <button id="btnStep" class="btn" title="Execute single 100ms macro step">⏭ Step</button>
+      <button id="btnReset" class="btn btn-danger" title="Reset to step 0">↺ Reset</button>
+    </div>
+
+    <!-- Quick-Action Spikes -->
+    <div class="control-group">
+      <span class="control-label">Trigger Burst:</span>
+      <button id="btnSpikeEmbb" class="btn btn-spike btn-primary" title="Inject +100% eMBB demand surge">eMBB +100%</button>
+      <button id="btnSpikeUrllc" class="btn btn-spike btn-warning" title="Inject 4x URLLC mission-critical surge">URLLC x4</button>
+      <button id="btnSpikeMurllc" class="btn btn-spike btn-warning" title="Inject 3x mURLLC IoT sensor surge">mURLLC x3</button>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       MAIN DASHBOARD CONTAINER
+       ==================================================================== -->
+  <main class="dashboard-container">
+
+    <!-- THREE POLICY COMPARISON PANELS -->
+    <div class="three-policy-grid">
+
+      <!-- ================================================================
+           PANEL 1: STATIC BASELINE (Fixed Allocation)
+           ================================================================ -->
+      <div id="panel-static" class="policy-panel">
+        <div class="panel-header">
+          <div class="policy-name">
+            <span>Static Baseline</span>
+            <span class="policy-tag static">Fixed 45/25/30</span>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <!-- SLA Status Cards -->
+          <div>
+            <div class="section-subtitle">SLA Health Status (per-slice)</div>
+            <div class="sla-status-row">
+              <div class="slice-sla-card embb">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">eMBB</span>
+                  <span data-metric="sla-embb" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-embb">0.0 Mbps</span>
+                  <span data-metric="lat-embb">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card urllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">URLLC</span>
+                  <span data-metric="sla-urllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-urllc">0.0 Mbps</span>
+                  <span data-metric="lat-urllc">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card murllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">mURLLC</span>
+                  <span data-metric="sla-murllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-murllc">0.0 Mbps</span>
+                  <span data-metric="lat-murllc">-- ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resource Allocation -->
+          <div class="allocation-group">
+            <div class="section-subtitle">Radio Bandwidth Allocation (100 PRBs)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="radio-embb" class="bar-segment embb" style="width: 45%;"></div>
+                <div data-bar="radio-urllc" class="bar-segment urllc" style="width: 25%;"></div>
+                <div data-bar="radio-murllc" class="bar-segment murllc" style="width: 30%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="r-embb-val">45.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="r-urllc-val">25.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="r-murllc-val">30.0%</span></div>
+              </div>
+            </div>
+
+            <div class="section-subtitle" style="margin-top: 6px;">Edge-Compute Capacity (100 Cores)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="compute-embb" class="bar-segment embb" style="width: 45%;"></div>
+                <div data-bar="compute-urllc" class="bar-segment urllc" style="width: 25%;"></div>
+                <div data-bar="compute-murllc" class="bar-segment murllc" style="width: 30%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="c-embb-val">45.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="c-urllc-val">25.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="c-murllc-val">30.0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Queue & Packet Diagnostics -->
+          <div class="diagnostics-grid">
+            <div class="diag-item"><span class="diag-label">Offered Pkts:</span><span data-metric="diag-offered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Delivered:</span><span data-metric="diag-delivered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Dropped:</span><span data-metric="diag-dropped" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Queue Backlog:</span><span data-metric="diag-pending" class="diag-val">0</span></div>
+            <div class="diag-item" style="grid-column: span 2;"><span class="diag-label">Critical Violations:</span><span data-metric="diag-critical" class="diag-val">0</span></div>
+          </div>
+
+          <!-- Safety Shield Status -->
+          <div class="shield-banner passed">
+            <span class="shield-status-text">SHIELD VERIFIED (Passed)</span>
+            <span>0 Interventions</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           PANEL 2: ADAPTIVE HEURISTIC BASELINE
+           ================================================================ -->
+      <div id="panel-heuristic" class="policy-panel">
+        <div class="panel-header">
+          <div class="policy-name">
+            <span>Adaptive Heuristic</span>
+            <span class="policy-tag heuristic">Reactive Demand</span>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <!-- SLA Status Cards -->
+          <div>
+            <div class="section-subtitle">SLA Health Status (per-slice)</div>
+            <div class="sla-status-row">
+              <div class="slice-sla-card embb">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">eMBB</span>
+                  <span data-metric="sla-embb" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-embb">0.0 Mbps</span>
+                  <span data-metric="lat-embb">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card urllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">URLLC</span>
+                  <span data-metric="sla-urllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-urllc">0.0 Mbps</span>
+                  <span data-metric="lat-urllc">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card murllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">mURLLC</span>
+                  <span data-metric="sla-murllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-murllc">0.0 Mbps</span>
+                  <span data-metric="lat-murllc">-- ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resource Allocation -->
+          <div class="allocation-group">
+            <div class="section-subtitle">Radio Bandwidth Allocation (100 PRBs)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="radio-embb" class="bar-segment embb" style="width: 45%;"></div>
+                <div data-bar="radio-urllc" class="bar-segment urllc" style="width: 25%;"></div>
+                <div data-bar="radio-murllc" class="bar-segment murllc" style="width: 30%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="r-embb-val">45.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="r-urllc-val">25.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="r-murllc-val">30.0%</span></div>
+              </div>
+            </div>
+
+            <div class="section-subtitle" style="margin-top: 6px;">Edge-Compute Capacity (100 Cores)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="compute-embb" class="bar-segment embb" style="width: 45%;"></div>
+                <div data-bar="compute-urllc" class="bar-segment urllc" style="width: 25%;"></div>
+                <div data-bar="compute-murllc" class="bar-segment murllc" style="width: 30%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="c-embb-val">45.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="c-urllc-val">25.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="c-murllc-val">30.0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Queue & Packet Diagnostics -->
+          <div class="diagnostics-grid">
+            <div class="diag-item"><span class="diag-label">Offered Pkts:</span><span data-metric="diag-offered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Delivered:</span><span data-metric="diag-delivered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Dropped:</span><span data-metric="diag-dropped" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Queue Backlog:</span><span data-metric="diag-pending" class="diag-val">0</span></div>
+            <div class="diag-item" style="grid-column: span 2;"><span class="diag-label">Critical Violations:</span><span data-metric="diag-critical" class="diag-val">0</span></div>
+          </div>
+
+          <!-- Safety Shield Status -->
+          <div class="shield-banner passed">
+            <span class="shield-status-text">SHIELD VERIFIED (Passed)</span>
+            <span>0 Interventions</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================
+           PANEL 3: SLA GUARDIAN (CONSTRAINED PPO + SAFETY SHIELD)
+           ================================================================ -->
+      <div id="panel-agent" class="policy-panel agent-panel">
+        <div class="panel-header">
+          <div class="policy-name">
+            <span>SLA Guardian</span>
+            <span class="policy-tag agent">Constrained PPO + Shield</span>
+          </div>
+          <div style="font-size: 10px; color: var(--slice-embb); font-family: var(--font-mono);">
+            <span id="agentLambdaVal">λ = 9.648</span>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <!-- SLA Status Cards -->
+          <div>
+            <div class="section-subtitle">SLA Health Status (per-slice)</div>
+            <div class="sla-status-row">
+              <div class="slice-sla-card embb">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">eMBB</span>
+                  <span data-metric="sla-embb" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-embb">0.0 Mbps</span>
+                  <span data-metric="lat-embb">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card urllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">URLLC</span>
+                  <span data-metric="sla-urllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-urllc">0.0 Mbps</span>
+                  <span data-metric="lat-urllc">-- ms</span>
+                </div>
+              </div>
+
+              <div class="slice-sla-card murllc">
+                <div class="slice-sla-top">
+                  <span class="slice-id-label">mURLLC</span>
+                  <span data-metric="sla-murllc" class="sla-pill pass">PASS</span>
+                </div>
+                <div class="slice-metrics-sub">
+                  <span data-metric="tput-murllc">0.0 Mbps</span>
+                  <span data-metric="lat-murllc">-- ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resource Allocation -->
+          <div class="allocation-group">
+            <div class="section-subtitle">Radio Bandwidth Allocation (100 PRBs)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="radio-embb" class="bar-segment embb" style="width: 60%;"></div>
+                <div data-bar="radio-urllc" class="bar-segment urllc" style="width: 25%;"></div>
+                <div data-bar="radio-murllc" class="bar-segment murllc" style="width: 15%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="r-embb-val">60.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="r-urllc-val">25.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="r-murllc-val">15.0%</span></div>
+              </div>
+            </div>
+
+            <div class="section-subtitle" style="margin-top: 6px;">Edge-Compute Capacity (100 Cores)</div>
+            <div class="stacked-bar-container">
+              <div class="stacked-bar">
+                <div data-bar="compute-embb" class="bar-segment embb" style="width: 55%;"></div>
+                <div data-bar="compute-urllc" class="bar-segment urllc" style="width: 30%;"></div>
+                <div data-bar="compute-murllc" class="bar-segment murllc" style="width: 15%;"></div>
+              </div>
+              <div class="bar-legend">
+                <div class="bar-legend-item"><div class="legend-dot embb"></div>eMBB: <span data-metric="c-embb-val">55.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot urllc"></div>URLLC: <span data-metric="c-urllc-val">30.0%</span></div>
+                <div class="bar-legend-item"><div class="legend-dot murllc"></div>mURLLC: <span data-metric="c-murllc-val">15.0%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Queue & Packet Diagnostics -->
+          <div class="diagnostics-grid">
+            <div class="diag-item"><span class="diag-label">Offered Pkts:</span><span data-metric="diag-offered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Delivered:</span><span data-metric="diag-delivered" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Dropped:</span><span data-metric="diag-dropped" class="diag-val">0</span></div>
+            <div class="diag-item"><span class="diag-label">Queue Backlog:</span><span data-metric="diag-pending" class="diag-val">0</span></div>
+            <div class="diag-item" style="grid-column: span 2;"><span class="diag-label">Critical Violations:</span><span data-metric="diag-critical" class="diag-val">0</span></div>
+          </div>
+
+          <!-- Safety Shield Status -->
+          <div class="shield-banner passed">
+            <span class="shield-status-text">SHIELD VERIFIED (Passed)</span>
+            <span data-metric="agentCostVal" style="font-family: var(--font-mono); font-size: 10px;">Cost: 0.0000</span>
+          </div>
+
+          <!-- Agent Grounded Explainability -->
+          <div class="agent-insights-box">
+            <div class="agent-insight-title">
+              <span>Policy Decision Rationale</span>
+              <span style="font-size: 9px; opacity: 0.7;">PPO Inference</span>
+            </div>
+            <div id="agentExplanationText" class="agent-explanation-text">
+              "Observing nominal demand. Maximizing eMBB radio capacity while preserving URLLC 25% and mURLLC 15% guaranteed reservations."
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GLOBAL PERFORMANCE COMPARISON & SCOREBOARD SECTION -->
+    <div class="comparison-section">
+
+      <!-- Left: Interactive Comparative Time-Series Charts -->
+      <div class="charts-panel">
+        <div class="charts-tabs">
+          <button id="tabTput" class="tab-btn active">eMBB Delivered Throughput</button>
+          <button id="tabDrops" class="tab-btn">Critical Packet Violations</button>
+          <button id="tabUtil" class="tab-btn">Radio Resource Utilization</button>
+        </div>
+
+        <div id="wrapTput" class="chart-wrapper">
+          <canvas id="chartEmbbTput"></canvas>
+        </div>
+        <div id="wrapDrops" class="chart-wrapper" style="display: none;">
+          <canvas id="chartCriticalDrops"></canvas>
+        </div>
+        <div id="wrapUtil" class="chart-wrapper" style="display: none;">
+          <canvas id="chartUtil"></canvas>
+        </div>
+      </div>
+
+      <!-- Right: Cumulative Scoreboard Summary -->
+      <div class="scoreboard-panel">
+        <div class="scoreboard-title">
+          <span>Comparative Scoreboard</span>
+          <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Cumulative</span>
+        </div>
+
+        <table class="score-table">
+          <thead>
+            <tr>
+              <th>Policy</th>
+              <th>eMBB Mbps</th>
+              <th>Violations</th>
+              <th>Radio Util</th>
+              <th>Churn L1</th>
+              <th>Shield</th>
+            </tr>
+          </thead>
+          <tbody id="scoreboardBody">
+            <tr>
+              <td class="policy-cell" style="color: var(--text-muted);">Static Baseline</td>
+              <td>26.5</td>
+              <td>0</td>
+              <td>76.5%</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td class="policy-cell" style="color: var(--status-pass);">Adaptive Heuristic</td>
+              <td>42.2</td>
+              <td>0</td>
+              <td>75.0%</td>
+              <td>465</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td class="policy-cell" style="color: var(--slice-embb);">PPO SLA Guardian</td>
+              <td>37.7</td>
+              <td>0</td>
+              <td>83.2%</td>
+              <td>42</td>
+              <td>8</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM CHRONOLOGICAL EVENT FEED -->
+    <div class="event-feed-panel">
+      <div class="feed-header">
+        <span>Real-Time Audit & Event Stream</span>
+        <span style="font-size: 10px; color: var(--text-muted);">Chronological Log</span>
+      </div>
+      <div id="eventList" class="event-list">
+        <div class="event-item info">
+          <span class="event-time">[INIT]</span>
+          <span class="event-msg">SLA Guardian Dashboard initialized. Ready to connect to backend telemetry stream.</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

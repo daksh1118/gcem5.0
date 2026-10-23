@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .schemas.config import CANONICAL_SLICE_IDS, SLICE_DISPLAY_LABELS
 from .schemas.telemetry import (
@@ -292,3 +293,12 @@ async def websocket_telemetry_stream(websocket: WebSocket):
     except Exception as e:
         r.remove_subscriber(websocket)
         logger.warning(f"WebSocket client error: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Frontend Static Mount (Dashboard Console)
+# ---------------------------------------------------------------------------
+frontend_path = Path(__file__).resolve().parent.parent.parent / "frontend"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+
