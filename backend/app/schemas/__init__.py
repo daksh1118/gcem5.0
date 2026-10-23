@@ -20,6 +20,15 @@ from .actions import (
 )
 from .metrics import StepMetrics
 from .results import RunStatus, RunResult
+from .telemetry import (
+    RunStartRequest,
+    SpikeRequest,
+    ResetRequest,
+    PolicyTelemetry,
+    TelemetryEvent,
+    SinglePolicySummary,
+    MultiPolicySummary,
+)
 
 __all__ = [
     "SliceId",
@@ -37,4 +46,11 @@ __all__ = [
     "StepMetrics",
     "RunStatus",
     "RunResult",
+    "RunStartRequest",
+    "SpikeRequest",
+    "ResetRequest",
+    "PolicyTelemetry",
+    "TelemetryEvent",
+    "SinglePolicySummary",
+    "MultiPolicySummary",
 ]

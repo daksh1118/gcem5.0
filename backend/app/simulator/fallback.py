@@ -347,3 +347,19 @@ class FallbackNetworkSimulator(SimulatorInterface):
         )
 
         return next_network_state, step_diag.to_interface_diagnostics()
+
+    def inject_spike(
+        self,
+        target_slice: SliceId,
+        multiplier: float,
+        duration_steps: int,
+        start_step: Optional[int] = None,
+    ):
+        """Injects a runtime traffic burst into the underlying traffic generator."""
+        effective_start = start_step if start_step is not None else self.current_step
+        self.traffic_gen.inject_spike(
+            target_slice=target_slice,
+            multiplier=multiplier,
+            duration_steps=duration_steps,
+            start_step=effective_start,
+        )

@@ -4,7 +4,7 @@ Generates reproducible, slice-specific packet arrivals using seeded NumPy RNG.
 Supports 'normal', 'urllc_burst', and 'mixed_stress' scenarios.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import numpy as np
 
 from ..schemas.config import SliceId, CANONICAL_SLICE_IDS, RunConfig
@@ -28,6 +28,7 @@ class TrafficGenerator:
         self.seed = seed if seed is not None else config.seed
         self.rng = np.random.default_rng(self.seed)
         self.packet_counter = 0
+        self.active_spikes: List[Dict[str, Any]] = []
 
         # Extract scenario profile parameters
         self.scenario_name = config.traffic_profile
@@ -96,6 +97,14 @@ class TrafficGenerator:
                 # mURLLC: massive sensor arrivals with Poisson fluctuation
                 mean_mbps = nominal_mbps
 
+            # Apply active runtime spikes if present
+            for spike in self.active_spikes:
+                if spike["slice_id"] == slice_id:
+                    s_start = spike["start_step"]
+                    s_end = s_start + spike["duration_steps"]
+                    if s_start <= step < s_end:
+                        mean_mbps *= spike["multiplier"]
+
             # Total expected bytes in this step interval
             expected_bytes = (mean_mbps * 1e6 * step_duration_sec) / 8.0
             pkt_size = self.packet_sizes[slice_id]
@@ -125,10 +134,26 @@ class TrafficGenerator:
 
         return arrivals
 
+    def inject_spike(
+        self,
+        target_slice: SliceId,
+        multiplier: float,
+        duration_steps: int,
+        start_step: int,
+    ):
+        """Injects a transient multiplier surge into a specific slice's demand."""
+        self.active_spikes.append({
+            "slice_id": target_slice,
+            "multiplier": float(multiplier),
+            "duration_steps": int(duration_steps),
+            "start_step": int(start_step),
+        })
+
     def reset(self, seed: Optional[int] = None):
-        """Resets PRNG and packet sequence counters."""
+        """Resets PRNG, packet sequence counters, and active spikes."""
         if seed is not None:
             self.seed = seed
         self.rng = np.random.default_rng(self.seed)
         self.packet_counter = 0
+        self.active_spikes.clear()
         self._init_slice_profiles()

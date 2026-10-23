@@ -1,26 +1,112 @@
 """
 SLA Guardian - FastAPI Application Entry Point
-Exposes health checks and system metadata endpoints for the research prototype.
+Exposes real-time telemetry streaming (WebSocket /ws), scenario orchestration,
+runtime demand spike injection, and multi-policy comparative evaluation.
 """
 
-from fastapi import FastAPI
+import json
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from .schemas.config import CANONICAL_SLICE_IDS, SLICE_DISPLAY_LABELS
+from .schemas.telemetry import (
+    RunStartRequest,
+    SpikeRequest,
+    ResetRequest,
+    MultiPolicySummary,
+)
+from .services.experiment_runner import ExperimentRunner
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("sla_guardian.api")
+
+# Global singleton coordinator
+runner: Optional[ExperimentRunner] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initializes long-lived experiment coordinator on startup and tears down on shutdown."""
+    global runner
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    scenario_path = root_dir / "scenarios" / "default.json"
+    checkpoint_path = root_dir / "models" / "agent.zip"
+
+    logger.info("Initializing SLA Guardian Experiment Runner...")
+    runner = ExperimentRunner(
+        scenario_file=scenario_path,
+        checkpoint_path=checkpoint_path,
+        steps_per_interval=10,
+    )
+    yield
+    # Shutdown / cleanup
+    if runner and runner.background_task and not runner.background_task.done():
+        runner.background_task.cancel()
+    logger.info("SLA Guardian Experiment Runner shutdown complete.")
+
 
 app = FastAPI(
     title="SLA Guardian - 5G Network Slicing & Resource Allocation API",
     description="Backend service providing real-time telemetry, policy orchestration, and safety-shielded resource allocation for 5G network slices.",
-    version="0.1.0",
+    version="0.2.0",
+    lifespan=lifespan,
+)
+
+# Enable CORS for dashboard web clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
+def _get_runner() -> ExperimentRunner:
+    """Helper to ensure experiment runner is initialized."""
+    global runner
+    if runner is None:
+        root_dir = Path(__file__).resolve().parent.parent.parent
+        scenario_path = root_dir / "scenarios" / "default.json"
+        checkpoint_path = root_dir / "models" / "agent.zip"
+        runner = ExperimentRunner(
+            scenario_file=scenario_path,
+            checkpoint_path=checkpoint_path,
+            steps_per_interval=10,
+        )
+    return runner
+
+
+# ---------------------------------------------------------------------------
+# System & Health Endpoints
+# ---------------------------------------------------------------------------
+
 @app.get("/health", tags=["System"])
 def health_check():
-    """Returns service health status and active API version."""
+    """
+    Returns service health status, model readiness, and active scenario state.
+    Distinguishes a basic running server from a fully ready demo with a verified Agent.
+    """
+    r = _get_runner()
+    demo_ready = r.model_loaded and (r.rl_policy_instance is not None)
     return {
-        "status": "healthy",
+        "status": "healthy" if demo_ready else "degraded",
         "service": "SLA Guardian",
-        "version": "0.1.0",
-        "phase": "Phase 1 - Project Scaffolding & Shared Data Contracts",
+        "version": "0.2.0",
+        "phase": "Phase 6 - FastAPI Backend & Telemetry Streaming",
+        "demo_ready": demo_ready,
+        "model_loaded": r.model_loaded,
+        "model_path": str(r.checkpoint_path),
+        "model_error": r.model_error,
+        "active_scenario": r.active_scenario,
+        "macro_step": r.current_macro_step,
+        "run_status": r.status,
     }
 
 
@@ -32,5 +118,177 @@ def get_canonical_slices():
         "display_labels": {s.value: label for s, label in SLICE_DISPLAY_LABELS.items()},
         "workload_notes": {
             "mURLLC": "Massive / Mixed Ultra-Reliable Low-Latency Communication workload profile. Distinct from standard mMTC."
-        }
+        },
     }
+
+
+# ---------------------------------------------------------------------------
+# Scenarios Metadata
+# ---------------------------------------------------------------------------
+
+@app.get("/api/scenarios", tags=["Scenarios"])
+@app.get("/scenarios", tags=["Scenarios"], include_in_schema=False)
+def list_scenarios():
+    """Returns available scenarios with real configuration metadata from scenarios/default.json."""
+    r = _get_runner()
+    profiles = r.raw_scenario_data.get("traffic_profiles", {})
+    scenario_list = []
+    for sc_id, sc_data in profiles.items():
+        scenario_list.append({
+            "id": sc_id,
+            "description": sc_data.get("description", ""),
+            "nominal_demand_mbps": sc_data.get("nominal_demand_mbps", {}),
+            "burst_multiplier": sc_data.get("burst_multiplier")
+            or sc_data.get("surge_multiplier")
+            or sc_data.get("storm_multiplier"),
+        })
+
+    return {
+        "scenario_id": r.raw_scenario_data.get("scenario_id", "default_three_slice_baseline"),
+        "total_radio_capacity": r.base_config.total_radio_capacity,
+        "total_compute_capacity": r.base_config.total_compute_capacity,
+        "sla_thresholds": {
+            s.value: thresh.model_dump() for s, thresh in r.base_config.sla_thresholds.items()
+        },
+        "minimum_reservations": {
+            s.value: res.model_dump() for s, res in r.base_config.minimum_reservations.items()
+        },
+        "scenarios": scenario_list,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Experiment Lifecycle Control
+# ---------------------------------------------------------------------------
+
+@app.post("/api/runs", tags=["Experiment Control"], status_code=status.HTTP_201_CREATED)
+@app.post("/runs", tags=["Experiment Control"], include_in_schema=False, status_code=status.HTTP_201_CREATED)
+async def start_run(request: RunStartRequest):
+    """
+    Starts a new experiment with validated scenario, seed, and macro-step budget.
+    Cancels and replaces any currently active run.
+    """
+    r = _get_runner()
+    # Validate scenario exists
+    valid_scenarios = r.raw_scenario_data.get("traffic_profiles", {}).keys()
+    if request.scenario not in valid_scenarios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown scenario '{request.scenario}'. Valid scenarios: {list(valid_scenarios)}",
+        )
+
+    res = await r.start_run(
+        scenario=request.scenario,
+        seed=request.seed,
+        max_macro_steps=request.max_macro_steps,
+        selected_policies=request.selected_policies,
+    )
+    return res
+
+
+@app.post("/api/pause", tags=["Experiment Control"])
+async def pause_run():
+    """Pauses the active experiment loop."""
+    r = _get_runner()
+    return await r.pause()
+
+
+@app.post("/api/resume", tags=["Experiment Control"])
+async def resume_run():
+    """Resumes a paused experiment loop."""
+    r = _get_runner()
+    return await r.resume()
+
+
+@app.post("/api/reset", tags=["Experiment Control"])
+@app.post("/reset", tags=["Experiment Control"], include_in_schema=False)
+async def reset_experiment(request: Optional[ResetRequest] = None):
+    """
+    Resets all three policy environments and accumulators to step 0.
+    Ensures zero cross-run data contamination.
+    """
+    r = _get_runner()
+    scen = request.scenario if request else None
+    seed = request.seed if request else None
+    if scen and scen not in r.raw_scenario_data.get("traffic_profiles", {}):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown scenario '{scen}'.",
+        )
+    return await r.reset(scenario=scen, seed=seed)
+
+
+@app.post("/api/spike", tags=["Experiment Control"])
+@app.post("/spike", tags=["Experiment Control"], include_in_schema=False)
+async def trigger_spike(request: SpikeRequest):
+    """
+    Injects an instantaneous demand burst identically into all three policy simulators.
+    """
+    r = _get_runner()
+    try:
+        res = await r.inject_spike(
+            target_slice=request.target_slice,
+            multiplier=request.multiplier,
+            duration_steps=request.duration_steps,
+            start_step=request.start_step,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.get("/api/status", tags=["Status"])
+def get_run_status():
+    """Returns real-time execution status and progress of the active experiment."""
+    r = _get_runner()
+    return r.get_status()
+
+
+@app.get("/api/summary", tags=["Results"], response_model=MultiPolicySummary)
+@app.get("/summary", tags=["Results"], include_in_schema=False, response_model=MultiPolicySummary)
+def get_run_summary():
+    """
+    Returns cumulative and per-slice performance summaries for Static, Heuristic, and Agent.
+    Strictly derives metrics from whole-run numerators and denominators.
+    """
+    r = _get_runner()
+    return r.get_summary()
+
+
+@app.post("/api/step", tags=["Experiment Control"])
+async def trigger_single_step():
+    """Manually triggers exactly one synchronized 100 ms macro-control interval."""
+    r = _get_runner()
+    evt = await r.step_once()
+    return evt.model_dump()
+
+
+# ---------------------------------------------------------------------------
+# WebSocket Telemetry Stream
+# ---------------------------------------------------------------------------
+
+@app.websocket("/ws")
+async def websocket_telemetry_stream(websocket: WebSocket):
+    """
+    Live real-time telemetry stream delivering synchronized 100 ms macro updates
+    across Static, Heuristic, and PPO policies.
+    """
+    await websocket.accept()
+    r = _get_runner()
+    await r.add_subscriber(websocket)
+    logger.info("WebSocket subscriber connected to live telemetry stream.")
+
+    try:
+        while True:
+            # Keep connection open, handle incoming heartbeat or client messages
+            msg = await websocket.receive_text()
+            if msg == "step":
+                await r.step_once()
+            elif msg == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        r.remove_subscriber(websocket)
+        logger.info("WebSocket subscriber disconnected.")
+    except Exception as e:
+        r.remove_subscriber(websocket)
+        logger.warning(f"WebSocket client error: {e}")

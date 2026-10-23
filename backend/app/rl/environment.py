@@ -225,3 +225,18 @@ class SliceGymnasiumEnv(gym.Env):
         new_lambda = self.lagrangian.update(mean_cost)
         self.active_lambda = new_lambda
         return new_lambda
+
+    def inject_spike(
+        self,
+        target_slice: SliceId,
+        multiplier: float,
+        duration_steps: int,
+        start_step: Optional[int] = None,
+    ):
+        """Forwards spike injection to the underlying simulator."""
+        self.simulator.inject_spike(
+            target_slice=target_slice,
+            multiplier=multiplier,
+            duration_steps=duration_steps,
+            start_step=start_step,
+        )
