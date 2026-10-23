@@ -58,10 +58,28 @@
         "mURLLC": 15.0
       }
     },
+    "embb_surge": {
+      "description": "High-throughput video streaming surge testing capacity headroom.",
+      "nominal_demand_mbps": {
+        "eMBB": 85.0,
+        "URLLC": 8.0,
+        "mURLLC": 15.0
+      },
+      "surge_multiplier": 1.88
+    },
     "urllc_burst": {
       "description": "Sudden 4x surge in URLLC mission-critical tactile demand.",
       "burst_multiplier": 4.0,
       "burst_duration_steps": 50
+    },
+    "murllc_storm": {
+      "description": "Massive IoT sensor telemetry storm testing connection density.",
+      "nominal_demand_mbps": {
+        "eMBB": 45.0,
+        "URLLC": 8.0,
+        "mURLLC": 45.0
+      },
+      "storm_multiplier": 3.0
     },
     "mixed_stress": {
       "description": "High simultaneous load testing congestion and Safety Shield intervention.",
