@@ -4,7 +4,7 @@ Defines abstract contracts for decision policies (RL/Heuristic/Static) and evalu
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 from ..schemas.config import RunConfig
 from ..schemas.state import NetworkState
@@ -61,6 +61,7 @@ class EvaluatorInterface(ABC):
         executed_action: ExecutedAction,
         next_state: NetworkState,
         config: Optional[RunConfig] = None,
+        diagnostics: Optional[Any] = None,
     ) -> StepMetrics:
         """
         Computes SLA compliance, resource utilization, and telemetry metrics from a state transition.
@@ -70,6 +71,7 @@ class EvaluatorInterface(ABC):
             executed_action: Verified allocation executed between step t and t+1.
             next_state: Resulting state observation at step t+1.
             config: Optional RunConfig containing SLA thresholds.
+            diagnostics: Optional SimulatorDiagnostics from the simulation step.
             
         Returns:
             StepMetrics: Telemetry record for step t+1.

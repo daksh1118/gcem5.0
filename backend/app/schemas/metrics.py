@@ -32,17 +32,17 @@ class StepMetrics(BaseModel):
         ...,
         description="Empirical delivered throughput in Mbps per slice."
     )
-    p95_latency_ms: Dict[SliceId, float] = Field(
+    p95_latency_ms: Dict[SliceId, Optional[float]] = Field(
         ...,
-        description="Empirical 95th percentile latency in milliseconds per slice."
+        description="Empirical 95th percentile latency in milliseconds per slice. None if no delay samples."
     )
-    packet_delivery_ratio: Dict[SliceId, float] = Field(
+    packet_delivery_ratio: Dict[SliceId, Optional[float]] = Field(
         ...,
-        description="Packet delivery ratio (0.0 to 1.0) per slice."
+        description="Packet delivery ratio (0.0 to 1.0) per slice. None if no finished packets."
     )
     sla_status: Dict[SliceId, bool] = Field(
         ...,
-        description="Binary SLA compliance status per slice (True = Compliant, False = SLA Breach)."
+        description="Binary SLA compliance status per slice (True = Compliant, False = SLA Breach or Insufficient Data)."
     )
     sla_breach_count: int = Field(
         default=0,
@@ -64,7 +64,7 @@ class StepMetrics(BaseModel):
     allocation_churn: float = Field(
         default=0.0,
         ge=0.0,
-        description="Euclidean distance or L1 norm of resource reallocations between consecutive steps."
+        description="L1 norm of resource reallocations between consecutive steps."
     )
     safety_intervention: bool = Field(
         default=False,
@@ -73,6 +73,28 @@ class StepMetrics(BaseModel):
     reward_components: Optional[Dict[str, float]] = Field(
         default=None,
         description="Decoupled reward terms (e.g. sla_reward, efficiency_reward, churn_penalty) for RL."
+    )
+
+    # Detailed packet cohort accounting (optional extensions)
+    offered_packets: Optional[Dict[SliceId, int]] = Field(
+        default=None,
+        description="Total packets generated during this step per slice."
+    )
+    delivered_packets: Optional[Dict[SliceId, int]] = Field(
+        default=None,
+        description="Total packets delivered during this step per slice."
+    )
+    dropped_packets: Optional[Dict[SliceId, int]] = Field(
+        default=None,
+        description="Total packets dropped during this step per slice."
+    )
+    pending_packets: Optional[Dict[SliceId, int]] = Field(
+        default=None,
+        description="Packets currently pending in queues at this step."
+    )
+    sla_state_details: Optional[Dict[SliceId, str]] = Field(
+        default=None,
+        description="Detailed SLA state per slice ('PASS', 'BREACH', 'INSUFFICIENT_DATA')."
     )
 
     @field_validator("throughput_mbps", "p95_latency_ms", "packet_delivery_ratio", "sla_status")

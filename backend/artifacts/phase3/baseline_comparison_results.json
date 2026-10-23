@@ -1,0 +1,101 @@
+[
+  {
+    "scenario": "normal",
+    "static_summary": {
+      "mean_throughput_mbps_eMBB": 26.521,
+      "overall_pdr_eMBB": 0.5885,
+      "final_pending_packets_eMBB": 195.0,
+      "mean_throughput_mbps_URLLC": 7.892,
+      "overall_pdr_URLLC": 1.0,
+      "final_pending_packets_URLLC": 0.0,
+      "mean_throughput_mbps_mURLLC": 14.28,
+      "overall_pdr_mURLLC": 1.0,
+      "final_pending_packets_mURLLC": 11.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7647,
+      "mean_compute_utilization": 0.4869,
+      "total_churn": 0.0
+    },
+    "heuristic_summary": {
+      "mean_throughput_mbps_eMBB": 42.246,
+      "overall_pdr_eMBB": 0.9213,
+      "final_pending_packets_eMBB": 160.0,
+      "mean_throughput_mbps_URLLC": 7.892,
+      "overall_pdr_URLLC": 1.0,
+      "final_pending_packets_URLLC": 0.0,
+      "mean_throughput_mbps_mURLLC": 14.056,
+      "overall_pdr_mURLLC": 1.0,
+      "final_pending_packets_mURLLC": 39.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7498,
+      "mean_compute_utilization": 0.6419,
+      "total_churn": 464.936
+    }
+  },
+  {
+    "scenario": "urllc_burst",
+    "static_summary": {
+      "mean_throughput_mbps_eMBB": 26.454,
+      "overall_pdr_eMBB": 0.5675,
+      "final_pending_packets_eMBB": 154.0,
+      "mean_throughput_mbps_URLLC": 24.78,
+      "overall_pdr_URLLC": 0.7824,
+      "final_pending_packets_URLLC": 101.0,
+      "mean_throughput_mbps_mURLLC": 15.144,
+      "overall_pdr_mURLLC": 1.0,
+      "final_pending_packets_mURLLC": 22.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7647,
+      "mean_compute_utilization": 0.6638,
+      "total_churn": 0.0
+    },
+    "heuristic_summary": {
+      "mean_throughput_mbps_eMBB": 29.545,
+      "overall_pdr_eMBB": 0.6323,
+      "final_pending_packets_eMBB": 149.0,
+      "mean_throughput_mbps_URLLC": 26.764,
+      "overall_pdr_URLLC": 0.8429,
+      "final_pending_packets_URLLC": 81.0,
+      "mean_throughput_mbps_mURLLC": 14.976,
+      "overall_pdr_mURLLC": 0.9968,
+      "final_pending_packets_mURLLC": 37.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7531,
+      "mean_compute_utilization": 0.7129,
+      "total_churn": 1306.574
+    }
+  },
+  {
+    "scenario": "mixed_stress",
+    "static_summary": {
+      "mean_throughput_mbps_eMBB": 23.878,
+      "overall_pdr_eMBB": 0.2999,
+      "final_pending_packets_eMBB": 319.0,
+      "mean_throughput_mbps_URLLC": 21.608,
+      "overall_pdr_URLLC": 0.8821,
+      "final_pending_packets_URLLC": 62.0,
+      "mean_throughput_mbps_mURLLC": 21.44,
+      "overall_pdr_mURLLC": 0.6619,
+      "final_pending_packets_mURLLC": 245.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7647,
+      "mean_compute_utilization": 0.6693,
+      "total_churn": 0.0
+    },
+    "heuristic_summary": {
+      "mean_throughput_mbps_eMBB": 29.904,
+      "overall_pdr_eMBB": 0.3751,
+      "final_pending_packets_eMBB": 315.0,
+      "mean_throughput_mbps_URLLC": 20.14,
+      "overall_pdr_URLLC": 0.8269,
+      "final_pending_packets_URLLC": 97.0,
+      "mean_throughput_mbps_mURLLC": 19.112,
+      "overall_pdr_mURLLC": 0.5905,
+      "final_pending_packets_mURLLC": 248.0,
+      "sla_breach_step_ratio": 1.0,
+      "mean_radio_utilization": 0.7593,
+      "mean_compute_utilization": 0.6916,
+      "total_churn": 634.314
+    }
+  }
+]
