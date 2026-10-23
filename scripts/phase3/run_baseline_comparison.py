@@ -24,6 +24,10 @@ from backend.app.policies.heuristic import AdaptiveDemandHeuristicPolicy
 from backend.app.evaluation.metrics import SlaMetricEvaluator
 
 
+from backend.app.control.safety_shield import SafetyShield
+from backend.app.control.pipeline import PolicyExecutionPipeline
+
+
 def run_single_experiment(
     policy_name: str,
     policy_instance: Any,
@@ -32,7 +36,7 @@ def run_single_experiment(
     num_steps: int = 50,
     seed: int = 42,
 ) -> dict:
-    """Runs a single policy against a fresh simulator instance for num_steps."""
+    """Runs a single policy against a fresh simulator instance for num_steps via SafetyShield."""
     config = RunConfig(**raw_scenario_data).model_copy(
         update={"traffic_profile": scenario_name, "max_steps": num_steps, "seed": seed}
     )
@@ -40,42 +44,26 @@ def run_single_experiment(
     sim = FallbackNetworkSimulator(config=config, scenario_data=raw_scenario_data)
     evaluator = SlaMetricEvaluator()
     evaluator.reset_accumulator()
+    shield = SafetyShield()
+
+    pipeline = PolicyExecutionPipeline(
+        simulator=sim,
+        evaluator=evaluator,
+        safety_shield=shield,
+        config=config,
+    )
 
     # Reset policy internal state if applicable
     if hasattr(policy_instance, "reset_state"):
         policy_instance.reset_state()
 
     current_state = sim.reset(seed=seed)
+    interventions = 0
 
     for step_idx in range(num_steps):
-        # 1. Policy generates proposed action
-        proposal = policy_instance.predict(current_state)
-
-        # 2. Convert proposal to executed action after checking budget validity
-        tot_r = sum(proposal.radio_allocations.values())
-        tot_c = sum(proposal.compute_allocations.values())
-        assert tot_r <= config.total_radio_capacity + 1e-3, f"Budget exceeded: {tot_r}"
-        assert tot_c <= config.total_compute_capacity + 1e-3, f"Budget exceeded: {tot_c}"
-
-        executed_action = ExecutedAction(
-            radio_allocations=proposal.radio_allocations,
-            compute_allocations=proposal.compute_allocations,
-            priorities=proposal.priorities,
-            is_modified_by_safety=False,
-        )
-
-        # 3. Advance simulator step
-        next_state, diag = sim.step(executed_action)
-
-        # 4. Evaluate transition
-        evaluator.evaluate_transition(
-            current_state=current_state,
-            executed_action=executed_action,
-            next_state=next_state,
-            config=config,
-            diagnostics=diag,
-        )
-
+        next_state, record = pipeline.execute_step(current_state, policy_instance)
+        if record.safety_result.intervention_occurred:
+            interventions += 1
         current_state = next_state
 
     # Build final run summary
@@ -88,7 +76,10 @@ def run_single_experiment(
         config=config,
     )
 
-    return run_res.model_dump()
+    result_dict = run_res.model_dump()
+    if result_dict.get("aggregate_metrics") is not None:
+        result_dict["aggregate_metrics"]["shield_interventions"] = float(interventions)
+    return result_dict
 
 
 def main():
@@ -143,6 +134,7 @@ def main():
 
         print(f"  {'Metric':<32} | {'Static Baseline':<18} | {'Adaptive Heuristic':<18}")
         print(f"  {'-'*32}-+-{'-'*18}-+-{'-'*18}")
+        print(f"  {'Shield Interventions':<32} | {int(agg_s.get('shield_interventions', 0)):<18} | {int(agg_h.get('shield_interventions', 0)):<18}")
         print(f"  {'SLA Breach Step Ratio':<32} | {agg_s.get('sla_breach_step_ratio', 0.0):<18.2%} | {agg_h.get('sla_breach_step_ratio', 0.0):<18.2%}")
         print(f"  {'Mean Radio Utilization':<32} | {agg_s.get('mean_radio_utilization', 0.0):<18.2%} | {agg_h.get('mean_radio_utilization', 0.0):<18.2%}")
         print(f"  {'Mean Compute Utilization':<32} | {agg_s.get('mean_compute_utilization', 0.0):<18.2%} | {agg_h.get('mean_compute_utilization', 0.0):<18.2%}")

@@ -142,9 +142,9 @@ class SafetyResult(BaseModel):
         ...,
         description="The raw unvalidated action proposed by the policy."
     )
-    executed_action: ExecutedAction = Field(
-        ...,
-        description="The final action approved or adjusted for simulation execution."
+    executed_action: Optional[ExecutedAction] = Field(
+        default=None,
+        description="The final action approved or adjusted for simulation execution. None if REJECTED."
     )
     intervention_occurred: bool = Field(
         ...,
@@ -161,6 +161,22 @@ class SafetyResult(BaseModel):
     resource_budget_verified: bool = Field(
         default=True,
         description="Verification that sum of allocations does not exceed total network capacity."
+    )
+    radio_budget_verified: bool = Field(
+        default=True,
+        description="Verification that radio allocation does not exceed total radio capacity."
+    )
+    compute_budget_verified: bool = Field(
+        default=True,
+        description="Verification that compute allocation does not exceed total compute capacity."
+    )
+    reservation_verified: bool = Field(
+        default=True,
+        description="Verification that minimum reservations are respected."
+    )
+    explanation: Optional[str] = Field(
+        default=None,
+        description="Concise human-readable explanation of safety validation outcome."
     )
     step: Optional[int] = Field(
         default=None,

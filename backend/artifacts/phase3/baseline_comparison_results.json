@@ -14,7 +14,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7647,
       "mean_compute_utilization": 0.4869,
-      "total_churn": 0.0
+      "total_churn": 0.0,
+      "shield_interventions": 0.0
     },
     "heuristic_summary": {
       "mean_throughput_mbps_eMBB": 42.246,
@@ -29,7 +30,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7498,
       "mean_compute_utilization": 0.6419,
-      "total_churn": 464.936
+      "total_churn": 464.936,
+      "shield_interventions": 0.0
     }
   },
   {
@@ -47,7 +49,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7647,
       "mean_compute_utilization": 0.6638,
-      "total_churn": 0.0
+      "total_churn": 0.0,
+      "shield_interventions": 0.0
     },
     "heuristic_summary": {
       "mean_throughput_mbps_eMBB": 29.545,
@@ -62,7 +65,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7531,
       "mean_compute_utilization": 0.7129,
-      "total_churn": 1306.574
+      "total_churn": 1306.574,
+      "shield_interventions": 0.0
     }
   },
   {
@@ -80,7 +84,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7647,
       "mean_compute_utilization": 0.6693,
-      "total_churn": 0.0
+      "total_churn": 0.0,
+      "shield_interventions": 0.0
     },
     "heuristic_summary": {
       "mean_throughput_mbps_eMBB": 29.904,
@@ -95,7 +100,8 @@
       "sla_breach_step_ratio": 1.0,
       "mean_radio_utilization": 0.7593,
       "mean_compute_utilization": 0.6916,
-      "total_churn": 634.314
+      "total_churn": 634.314,
+      "shield_interventions": 0.0
     }
   }
 ]
