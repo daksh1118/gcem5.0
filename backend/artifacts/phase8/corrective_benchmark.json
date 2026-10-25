@@ -1,0 +1,1827 @@
+{
+  "timestamp": "2026-10-23T13:11:28.367978",
+  "control_interval_ms": 100,
+  "macro_steps_per_trial": 50,
+  "frozen_model_sha256": "1d21d58fe672530a1f15ad4232ca7acc5c2a2373edafe8675ee4fe39cc963e78",
+  "candidate_model_sha256": "ec903788b569e7c5ac612692e3979f4e8a6b90e2d8b7e2765e995c902ccc19bc",
+  "scenarios": [
+    "normal",
+    "embb_surge",
+    "urllc_burst",
+    "murllc_storm",
+    "mixed_stress"
+  ],
+  "seeds": [
+    42,
+    101,
+    202
+  ],
+  "policies": [
+    "static",
+    "heuristic",
+    "frozen_ppo",
+    "candidate_ppo"
+  ],
+  "records": [
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "policy": "static",
+      "embb_tput_mbps": 28.09,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.84,
+      "total_tput_mbps": 50.94,
+      "embb_pdr": 0.6313,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9994,
+      "critical_cost": 0.0003,
+      "mean_step_cost": 0.0003,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.8023,
+      "compute_util": 0.5094,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12539,
+        "URLLC": 20048,
+        "mURLLC": 18547
+      },
+      "dropped_packets": {
+        "eMBB": 7324,
+        "URLLC": 0,
+        "mURLLC": 11
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "policy": "heuristic",
+      "embb_tput_mbps": 41.49,
+      "urllc_tput_mbps": 8.01,
+      "murllc_tput_mbps": 14.59,
+      "total_tput_mbps": 64.09,
+      "embb_pdr": 0.9296,
+      "urllc_pdr": 0.9993,
+      "murllc_pdr": 0.9829,
+      "critical_cost": 0.0086,
+      "mean_step_cost": 0.0083,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7893,
+      "compute_util": 0.6409,
+      "allocation_churn": 695.38,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18522,
+        "URLLC": 20034,
+        "mURLLC": 18233
+      },
+      "dropped_packets": {
+        "eMBB": 1402,
+        "URLLC": 14,
+        "mURLLC": 317
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 39.46,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.62,
+      "total_tput_mbps": 62.1,
+      "embb_pdr": 0.8824,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9866,
+      "critical_cost": 0.0064,
+      "mean_step_cost": 0.0062,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7922,
+      "compute_util": 0.621,
+      "allocation_churn": 43.25,
+      "shield_interventions": 13,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17618,
+        "URLLC": 20048,
+        "mURLLC": 18276
+      },
+      "dropped_packets": {
+        "eMBB": 2348,
+        "URLLC": 0,
+        "mURLLC": 248
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.93,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.62,
+      "total_tput_mbps": 53.56,
+      "embb_pdr": 0.6952,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9859,
+      "critical_cost": 0.0068,
+      "mean_step_cost": 0.0065,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7991,
+      "compute_util": 0.5356,
+      "allocation_churn": 63.45,
+      "shield_interventions": 6,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13808,
+        "URLLC": 20048,
+        "mURLLC": 18269
+      },
+      "dropped_packets": {
+        "eMBB": 6053,
+        "URLLC": 0,
+        "mURLLC": 261
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 101,
+      "policy": "static",
+      "embb_tput_mbps": 27.56,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.9,
+      "total_tput_mbps": 50.48,
+      "embb_pdr": 0.6167,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 1.0,
+      "critical_cost": 0.0,
+      "mean_step_cost": 0.0,
+      "urllc_p95_lat_ms": 9.7,
+      "radio_util": 0.81,
+      "compute_util": 0.5048,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12306,
+        "URLLC": 20048,
+        "mURLLC": 18619
+      },
+      "dropped_packets": {
+        "eMBB": 7647,
+        "URLLC": 0,
+        "mURLLC": 0
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 101,
+      "policy": "heuristic",
+      "embb_tput_mbps": 40.87,
+      "urllc_tput_mbps": 8.01,
+      "murllc_tput_mbps": 14.75,
+      "total_tput_mbps": 63.63,
+      "embb_pdr": 0.9102,
+      "urllc_pdr": 0.9987,
+      "murllc_pdr": 0.9907,
+      "critical_cost": 0.0051,
+      "mean_step_cost": 0.0049,
+      "urllc_p95_lat_ms": 9.76,
+      "radio_util": 0.7941,
+      "compute_util": 0.6363,
+      "allocation_churn": 818.34,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18244,
+        "URLLC": 20022,
+        "mURLLC": 18438
+      },
+      "dropped_packets": {
+        "eMBB": 1800,
+        "URLLC": 26,
+        "mURLLC": 173
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 101,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 38.18,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.76,
+      "total_tput_mbps": 60.96,
+      "embb_pdr": 0.8517,
+      "urllc_pdr": 0.9998,
+      "murllc_pdr": 0.9914,
+      "critical_cost": 0.0042,
+      "mean_step_cost": 0.004,
+      "urllc_p95_lat_ms": 9.7,
+      "radio_util": 0.8002,
+      "compute_util": 0.6096,
+      "allocation_churn": 43.27,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17045,
+        "URLLC": 20044,
+        "mURLLC": 18454
+      },
+      "dropped_packets": {
+        "eMBB": 2969,
+        "URLLC": 4,
+        "mURLLC": 160
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 101,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.03,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.76,
+      "total_tput_mbps": 52.81,
+      "embb_pdr": 0.6717,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9912,
+      "critical_cost": 0.0042,
+      "mean_step_cost": 0.0039,
+      "urllc_p95_lat_ms": 9.7,
+      "radio_util": 0.8062,
+      "compute_util": 0.5281,
+      "allocation_churn": 63.18,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13408,
+        "URLLC": 20048,
+        "mURLLC": 18451
+      },
+      "dropped_packets": {
+        "eMBB": 6553,
+        "URLLC": 0,
+        "mURLLC": 163
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 202,
+      "policy": "static",
+      "embb_tput_mbps": 27.47,
+      "urllc_tput_mbps": 7.98,
+      "murllc_tput_mbps": 14.93,
+      "total_tput_mbps": 50.38,
+      "embb_pdr": 0.6094,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.999,
+      "critical_cost": 0.0005,
+      "mean_step_cost": 0.0005,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7945,
+      "compute_util": 0.5038,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12264,
+        "URLLC": 19953,
+        "mURLLC": 18660
+      },
+      "dropped_packets": {
+        "eMBB": 7861,
+        "URLLC": 0,
+        "mURLLC": 18
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 202,
+      "policy": "heuristic",
+      "embb_tput_mbps": 41.0,
+      "urllc_tput_mbps": 7.98,
+      "murllc_tput_mbps": 14.55,
+      "total_tput_mbps": 63.53,
+      "embb_pdr": 0.9059,
+      "urllc_pdr": 0.9995,
+      "murllc_pdr": 0.9756,
+      "critical_cost": 0.012,
+      "mean_step_cost": 0.0118,
+      "urllc_p95_lat_ms": 9.72,
+      "radio_util": 0.7838,
+      "compute_util": 0.6353,
+      "allocation_churn": 772.36,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18305,
+        "URLLC": 19943,
+        "mURLLC": 18182
+      },
+      "dropped_packets": {
+        "eMBB": 1901,
+        "URLLC": 10,
+        "mURLLC": 454
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 202,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 39.01,
+      "urllc_tput_mbps": 7.98,
+      "murllc_tput_mbps": 14.68,
+      "total_tput_mbps": 61.67,
+      "embb_pdr": 0.8632,
+      "urllc_pdr": 0.9999,
+      "murllc_pdr": 0.9848,
+      "critical_cost": 0.0074,
+      "mean_step_cost": 0.0073,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7869,
+      "compute_util": 0.6167,
+      "allocation_churn": 44.72,
+      "shield_interventions": 7,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17415,
+        "URLLC": 19952,
+        "mURLLC": 18348
+      },
+      "dropped_packets": {
+        "eMBB": 2761,
+        "URLLC": 1,
+        "mURLLC": 284
+      }
+    },
+    {
+      "scenario": "normal",
+      "seed": 202,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 29.94,
+      "urllc_tput_mbps": 7.98,
+      "murllc_tput_mbps": 14.68,
+      "total_tput_mbps": 52.6,
+      "embb_pdr": 0.6643,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9839,
+      "critical_cost": 0.0078,
+      "mean_step_cost": 0.0077,
+      "urllc_p95_lat_ms": 9.68,
+      "radio_util": 0.7905,
+      "compute_util": 0.526,
+      "allocation_churn": 68.72,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13367,
+        "URLLC": 19953,
+        "mURLLC": 18350
+      },
+      "dropped_packets": {
+        "eMBB": 6756,
+        "URLLC": 0,
+        "mURLLC": 300
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 42,
+      "policy": "static",
+      "embb_tput_mbps": 24.29,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.81,
+      "total_tput_mbps": 47.12,
+      "embb_pdr": 0.2869,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9998,
+      "critical_cost": 0.0001,
+      "mean_step_cost": 0.0001,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.8023,
+      "compute_util": 0.4712,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10842,
+        "URLLC": 20057,
+        "mURLLC": 18516
+      },
+      "dropped_packets": {
+        "eMBB": 26945,
+        "URLLC": 0,
+        "mURLLC": 4
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 42,
+      "policy": "heuristic",
+      "embb_tput_mbps": 41.3,
+      "urllc_tput_mbps": 8.01,
+      "murllc_tput_mbps": 13.97,
+      "total_tput_mbps": 63.27,
+      "embb_pdr": 0.4878,
+      "urllc_pdr": 0.9982,
+      "murllc_pdr": 0.9452,
+      "critical_cost": 0.0272,
+      "mean_step_cost": 0.0261,
+      "urllc_p95_lat_ms": 9.77,
+      "radio_util": 0.7795,
+      "compute_util": 0.6328,
+      "allocation_churn": 306.18,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18436,
+        "URLLC": 20020,
+        "mURLLC": 17463
+      },
+      "dropped_packets": {
+        "eMBB": 19357,
+        "URLLC": 37,
+        "mURLLC": 1013
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 42,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 34.87,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.55,
+      "total_tput_mbps": 57.44,
+      "embb_pdr": 0.4119,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9838,
+      "critical_cost": 0.0078,
+      "mean_step_cost": 0.0074,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.7917,
+      "compute_util": 0.5744,
+      "allocation_churn": 32.55,
+      "shield_interventions": 15,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15566,
+        "URLLC": 20057,
+        "mURLLC": 18186
+      },
+      "dropped_packets": {
+        "eMBB": 22225,
+        "URLLC": 0,
+        "mURLLC": 299
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 42,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 27.39,
+      "urllc_tput_mbps": 8.02,
+      "murllc_tput_mbps": 14.5,
+      "total_tput_mbps": 49.91,
+      "embb_pdr": 0.3236,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.98,
+      "critical_cost": 0.0096,
+      "mean_step_cost": 0.0091,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.7985,
+      "compute_util": 0.4991,
+      "allocation_churn": 63.49,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12228,
+        "URLLC": 20057,
+        "mURLLC": 18120
+      },
+      "dropped_packets": {
+        "eMBB": 25559,
+        "URLLC": 0,
+        "mURLLC": 370
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 101,
+      "policy": "static",
+      "embb_tput_mbps": 23.8,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 15.01,
+      "total_tput_mbps": 46.9,
+      "embb_pdr": 0.2797,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 1.0,
+      "critical_cost": 0.0,
+      "mean_step_cost": 0.0,
+      "urllc_p95_lat_ms": 9.66,
+      "radio_util": 0.81,
+      "compute_util": 0.469,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10626,
+        "URLLC": 20224,
+        "mURLLC": 18766
+      },
+      "dropped_packets": {
+        "eMBB": 27367,
+        "URLLC": 0,
+        "mURLLC": 0
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 101,
+      "policy": "heuristic",
+      "embb_tput_mbps": 40.42,
+      "urllc_tput_mbps": 8.07,
+      "murllc_tput_mbps": 14.21,
+      "total_tput_mbps": 62.7,
+      "embb_pdr": 0.4747,
+      "urllc_pdr": 0.9976,
+      "murllc_pdr": 0.9502,
+      "critical_cost": 0.0251,
+      "mean_step_cost": 0.0239,
+      "urllc_p95_lat_ms": 9.77,
+      "radio_util": 0.7852,
+      "compute_util": 0.627,
+      "allocation_churn": 234.86,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18044,
+        "URLLC": 20175,
+        "mURLLC": 17768
+      },
+      "dropped_packets": {
+        "eMBB": 19966,
+        "URLLC": 49,
+        "mURLLC": 931
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 101,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 33.94,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 14.82,
+      "total_tput_mbps": 56.85,
+      "embb_pdr": 0.3987,
+      "urllc_pdr": 0.9997,
+      "murllc_pdr": 0.9885,
+      "critical_cost": 0.0057,
+      "mean_step_cost": 0.0054,
+      "urllc_p95_lat_ms": 9.71,
+      "radio_util": 0.7998,
+      "compute_util": 0.5685,
+      "allocation_churn": 33.53,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15153,
+        "URLLC": 20218,
+        "mURLLC": 18529
+      },
+      "dropped_packets": {
+        "eMBB": 22851,
+        "URLLC": 6,
+        "mURLLC": 216
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 101,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 26.77,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 14.79,
+      "total_tput_mbps": 49.65,
+      "embb_pdr": 0.3145,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9858,
+      "critical_cost": 0.0068,
+      "mean_step_cost": 0.0064,
+      "urllc_p95_lat_ms": 9.66,
+      "radio_util": 0.8055,
+      "compute_util": 0.4965,
+      "allocation_churn": 66.41,
+      "shield_interventions": 13,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 11951,
+        "URLLC": 20224,
+        "mURLLC": 18487
+      },
+      "dropped_packets": {
+        "eMBB": 26049,
+        "URLLC": 0,
+        "mURLLC": 266
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 202,
+      "policy": "static",
+      "embb_tput_mbps": 23.95,
+      "urllc_tput_mbps": 7.95,
+      "murllc_tput_mbps": 15.04,
+      "total_tput_mbps": 46.94,
+      "embb_pdr": 0.285,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9989,
+      "critical_cost": 0.0005,
+      "mean_step_cost": 0.0005,
+      "urllc_p95_lat_ms": 9.71,
+      "radio_util": 0.7945,
+      "compute_util": 0.4694,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10693,
+        "URLLC": 19865,
+        "mURLLC": 18801
+      },
+      "dropped_packets": {
+        "eMBB": 26823,
+        "URLLC": 0,
+        "mURLLC": 20
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 202,
+      "policy": "heuristic",
+      "embb_tput_mbps": 40.74,
+      "urllc_tput_mbps": 7.92,
+      "murllc_tput_mbps": 13.86,
+      "total_tput_mbps": 62.52,
+      "embb_pdr": 0.4845,
+      "urllc_pdr": 0.9973,
+      "murllc_pdr": 0.9226,
+      "critical_cost": 0.0389,
+      "mean_step_cost": 0.0378,
+      "urllc_p95_lat_ms": 9.88,
+      "radio_util": 0.7748,
+      "compute_util": 0.6252,
+      "allocation_churn": 275.6,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 18188,
+        "URLLC": 19811,
+        "mURLLC": 17321
+      },
+      "dropped_packets": {
+        "eMBB": 19348,
+        "URLLC": 53,
+        "mURLLC": 1454
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 202,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 34.05,
+      "urllc_tput_mbps": 7.94,
+      "murllc_tput_mbps": 14.68,
+      "total_tput_mbps": 56.67,
+      "embb_pdr": 0.4051,
+      "urllc_pdr": 0.9996,
+      "murllc_pdr": 0.977,
+      "critical_cost": 0.0114,
+      "mean_step_cost": 0.0109,
+      "urllc_p95_lat_ms": 9.71,
+      "radio_util": 0.7865,
+      "compute_util": 0.5667,
+      "allocation_churn": 36.0,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15201,
+        "URLLC": 19857,
+        "mURLLC": 18346
+      },
+      "dropped_packets": {
+        "eMBB": 22319,
+        "URLLC": 8,
+        "mURLLC": 432
+      }
+    },
+    {
+      "scenario": "embb_surge",
+      "seed": 202,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 26.87,
+      "urllc_tput_mbps": 7.95,
+      "murllc_tput_mbps": 14.64,
+      "total_tput_mbps": 49.45,
+      "embb_pdr": 0.3197,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.9737,
+      "critical_cost": 0.0128,
+      "mean_step_cost": 0.0122,
+      "urllc_p95_lat_ms": 9.71,
+      "radio_util": 0.7896,
+      "compute_util": 0.4945,
+      "allocation_churn": 74.23,
+      "shield_interventions": 16,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 11994,
+        "URLLC": 19865,
+        "mURLLC": 18301
+      },
+      "dropped_packets": {
+        "eMBB": 25522,
+        "URLLC": 0,
+        "mURLLC": 495
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 42,
+      "policy": "static",
+      "embb_tput_mbps": 28.18,
+      "urllc_tput_mbps": 25.7,
+      "murllc_tput_mbps": 15.1,
+      "total_tput_mbps": 68.97,
+      "embb_pdr": 0.6312,
+      "urllc_pdr": 0.8052,
+      "murllc_pdr": 0.9994,
+      "critical_cost": 0.1576,
+      "mean_step_cost": 0.1535,
+      "urllc_p95_lat_ms": 17.14,
+      "radio_util": 0.8023,
+      "compute_util": 0.6897,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12579,
+        "URLLC": 64241,
+        "mURLLC": 18877
+      },
+      "dropped_packets": {
+        "eMBB": 7350,
+        "URLLC": 15539,
+        "mURLLC": 12
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 42,
+      "policy": "heuristic",
+      "embb_tput_mbps": 30.39,
+      "urllc_tput_mbps": 27.36,
+      "murllc_tput_mbps": 14.46,
+      "total_tput_mbps": 72.22,
+      "embb_pdr": 0.6811,
+      "urllc_pdr": 0.8574,
+      "murllc_pdr": 0.9604,
+      "critical_cost": 0.1229,
+      "mean_step_cost": 0.1193,
+      "urllc_p95_lat_ms": 17.04,
+      "radio_util": 0.7929,
+      "compute_util": 0.7222,
+      "allocation_churn": 1491.99,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13568,
+        "URLLC": 68409,
+        "mURLLC": 18081
+      },
+      "dropped_packets": {
+        "eMBB": 6354,
+        "URLLC": 11380,
+        "mURLLC": 745
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 42,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 39.32,
+      "urllc_tput_mbps": 23.72,
+      "murllc_tput_mbps": 14.82,
+      "total_tput_mbps": 77.85,
+      "embb_pdr": 0.8764,
+      "urllc_pdr": 0.7437,
+      "murllc_pdr": 0.9829,
+      "critical_cost": 0.2104,
+      "mean_step_cost": 0.2047,
+      "urllc_p95_lat_ms": 17.18,
+      "radio_util": 0.7921,
+      "compute_util": 0.7785,
+      "allocation_churn": 44.48,
+      "shield_interventions": 9,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17554,
+        "URLLC": 59294,
+        "mURLLC": 18519
+      },
+      "dropped_packets": {
+        "eMBB": 2476,
+        "URLLC": 20439,
+        "mURLLC": 323
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 42,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 31.16,
+      "urllc_tput_mbps": 27.05,
+      "murllc_tput_mbps": 14.81,
+      "total_tput_mbps": 73.01,
+      "embb_pdr": 0.6979,
+      "urllc_pdr": 0.8474,
+      "murllc_pdr": 0.9815,
+      "critical_cost": 0.1269,
+      "mean_step_cost": 0.1239,
+      "urllc_p95_lat_ms": 17.13,
+      "radio_util": 0.7989,
+      "compute_util": 0.7301,
+      "allocation_churn": 73.96,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13909,
+        "URLLC": 67613,
+        "mURLLC": 18507
+      },
+      "dropped_packets": {
+        "eMBB": 6021,
+        "URLLC": 12176,
+        "mURLLC": 349
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 101,
+      "policy": "static",
+      "embb_tput_mbps": 27.56,
+      "urllc_tput_mbps": 26.38,
+      "murllc_tput_mbps": 14.89,
+      "total_tput_mbps": 68.83,
+      "embb_pdr": 0.6181,
+      "urllc_pdr": 0.826,
+      "murllc_pdr": 1.0,
+      "critical_cost": 0.1408,
+      "mean_step_cost": 0.1369,
+      "urllc_p95_lat_ms": 17.05,
+      "radio_util": 0.81,
+      "compute_util": 0.6883,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12305,
+        "URLLC": 65946,
+        "mURLLC": 18613
+      },
+      "dropped_packets": {
+        "eMBB": 7604,
+        "URLLC": 13894,
+        "mURLLC": 0
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 101,
+      "policy": "heuristic",
+      "embb_tput_mbps": 30.8,
+      "urllc_tput_mbps": 27.82,
+      "murllc_tput_mbps": 14.37,
+      "total_tput_mbps": 72.98,
+      "embb_pdr": 0.6891,
+      "urllc_pdr": 0.871,
+      "murllc_pdr": 0.9677,
+      "critical_cost": 0.1104,
+      "mean_step_cost": 0.1074,
+      "urllc_p95_lat_ms": 17.09,
+      "radio_util": 0.8021,
+      "compute_util": 0.7298,
+      "allocation_churn": 1395.07,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13748,
+        "URLLC": 69538,
+        "mURLLC": 17963
+      },
+      "dropped_packets": {
+        "eMBB": 6203,
+        "URLLC": 10297,
+        "mURLLC": 599
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 101,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 38.79,
+      "urllc_tput_mbps": 24.46,
+      "murllc_tput_mbps": 14.71,
+      "total_tput_mbps": 77.96,
+      "embb_pdr": 0.8667,
+      "urllc_pdr": 0.7662,
+      "murllc_pdr": 0.9892,
+      "critical_cost": 0.1912,
+      "mean_step_cost": 0.1859,
+      "urllc_p95_lat_ms": 17.18,
+      "radio_util": 0.8002,
+      "compute_util": 0.7796,
+      "allocation_churn": 38.7,
+      "shield_interventions": 14,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17315,
+        "URLLC": 61160,
+        "mURLLC": 18388
+      },
+      "dropped_packets": {
+        "eMBB": 2662,
+        "URLLC": 18662,
+        "mURLLC": 200
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 101,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.49,
+      "urllc_tput_mbps": 27.63,
+      "murllc_tput_mbps": 14.7,
+      "total_tput_mbps": 72.82,
+      "embb_pdr": 0.6833,
+      "urllc_pdr": 0.8648,
+      "murllc_pdr": 0.988,
+      "critical_cost": 0.1117,
+      "mean_step_cost": 0.1088,
+      "urllc_p95_lat_ms": 17.01,
+      "radio_util": 0.8059,
+      "compute_util": 0.7282,
+      "allocation_churn": 59.74,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13610,
+        "URLLC": 69078,
+        "mURLLC": 18373
+      },
+      "dropped_packets": {
+        "eMBB": 6307,
+        "URLLC": 10795,
+        "mURLLC": 224
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 202,
+      "policy": "static",
+      "embb_tput_mbps": 27.76,
+      "urllc_tput_mbps": 25.52,
+      "murllc_tput_mbps": 14.96,
+      "total_tput_mbps": 68.23,
+      "embb_pdr": 0.6229,
+      "urllc_pdr": 0.8008,
+      "murllc_pdr": 1.0,
+      "critical_cost": 0.161,
+      "mean_step_cost": 0.1582,
+      "urllc_p95_lat_ms": 17.17,
+      "radio_util": 0.7945,
+      "compute_util": 0.6823,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12392,
+        "URLLC": 63802,
+        "mURLLC": 18695
+      },
+      "dropped_packets": {
+        "eMBB": 7503,
+        "URLLC": 15868,
+        "mURLLC": 0
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 202,
+      "policy": "heuristic",
+      "embb_tput_mbps": 29.95,
+      "urllc_tput_mbps": 27.29,
+      "murllc_tput_mbps": 14.26,
+      "total_tput_mbps": 71.5,
+      "embb_pdr": 0.6722,
+      "urllc_pdr": 0.8554,
+      "murllc_pdr": 0.9556,
+      "critical_cost": 0.1254,
+      "mean_step_cost": 0.1227,
+      "urllc_p95_lat_ms": 17.1,
+      "radio_util": 0.7873,
+      "compute_util": 0.715,
+      "allocation_churn": 1605.75,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13369,
+        "URLLC": 68237,
+        "mURLLC": 17826
+      },
+      "dropped_packets": {
+        "eMBB": 6518,
+        "URLLC": 11537,
+        "mURLLC": 828
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 202,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 38.8,
+      "urllc_tput_mbps": 23.39,
+      "murllc_tput_mbps": 14.68,
+      "total_tput_mbps": 76.87,
+      "embb_pdr": 0.8684,
+      "urllc_pdr": 0.7342,
+      "murllc_pdr": 0.9837,
+      "critical_cost": 0.2178,
+      "mean_step_cost": 0.2145,
+      "urllc_p95_lat_ms": 17.19,
+      "radio_util": 0.7868,
+      "compute_util": 0.7687,
+      "allocation_churn": 40.67,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17322,
+        "URLLC": 58468,
+        "mURLLC": 18349
+      },
+      "dropped_packets": {
+        "eMBB": 2625,
+        "URLLC": 21169,
+        "mURLLC": 304
+      }
+    },
+    {
+      "scenario": "urllc_burst",
+      "seed": 202,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.36,
+      "urllc_tput_mbps": 27.0,
+      "murllc_tput_mbps": 14.66,
+      "total_tput_mbps": 72.02,
+      "embb_pdr": 0.6814,
+      "urllc_pdr": 0.8466,
+      "murllc_pdr": 0.9813,
+      "critical_cost": 0.1277,
+      "mean_step_cost": 0.1255,
+      "urllc_p95_lat_ms": 17.11,
+      "radio_util": 0.7902,
+      "compute_util": 0.7202,
+      "allocation_churn": 65.1,
+      "shield_interventions": 14,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13555,
+        "URLLC": 67499,
+        "mURLLC": 18319
+      },
+      "dropped_packets": {
+        "eMBB": 6337,
+        "URLLC": 12235,
+        "mURLLC": 350
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 42,
+      "policy": "static",
+      "embb_tput_mbps": 28.23,
+      "urllc_tput_mbps": 7.9,
+      "murllc_tput_mbps": 19.58,
+      "total_tput_mbps": 55.7,
+      "embb_pdr": 0.6321,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.4382,
+      "critical_cost": 0.4133,
+      "mean_step_cost": 0.409,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.8023,
+      "compute_util": 0.5571,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12602,
+        "URLLC": 19748,
+        "mURLLC": 24472
+      },
+      "dropped_packets": {
+        "eMBB": 7334,
+        "URLLC": 0,
+        "mURLLC": 31377
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 42,
+      "policy": "heuristic",
+      "embb_tput_mbps": 23.11,
+      "urllc_tput_mbps": 7.88,
+      "murllc_tput_mbps": 34.35,
+      "total_tput_mbps": 65.34,
+      "embb_pdr": 0.5175,
+      "urllc_pdr": 0.9979,
+      "murllc_pdr": 0.7681,
+      "critical_cost": 0.1713,
+      "mean_step_cost": 0.1684,
+      "urllc_p95_lat_ms": 11.5,
+      "radio_util": 0.8021,
+      "compute_util": 0.6534,
+      "allocation_churn": 620.22,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10315,
+        "URLLC": 19706,
+        "mURLLC": 42943
+      },
+      "dropped_packets": {
+        "eMBB": 9617,
+        "URLLC": 42,
+        "mURLLC": 12963
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 42,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 39.87,
+      "urllc_tput_mbps": 7.9,
+      "murllc_tput_mbps": 14.52,
+      "total_tput_mbps": 62.29,
+      "embb_pdr": 0.8888,
+      "urllc_pdr": 0.9999,
+      "murllc_pdr": 0.3251,
+      "critical_cost": 0.4964,
+      "mean_step_cost": 0.4921,
+      "urllc_p95_lat_ms": 9.66,
+      "radio_util": 0.792,
+      "compute_util": 0.6229,
+      "allocation_churn": 38.95,
+      "shield_interventions": 13,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17799,
+        "URLLC": 19747,
+        "mURLLC": 18150
+      },
+      "dropped_packets": {
+        "eMBB": 2226,
+        "URLLC": 1,
+        "mURLLC": 37679
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 42,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.82,
+      "urllc_tput_mbps": 7.9,
+      "murllc_tput_mbps": 16.12,
+      "total_tput_mbps": 54.84,
+      "embb_pdr": 0.6901,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.3609,
+      "critical_cost": 0.4701,
+      "mean_step_cost": 0.4655,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.7993,
+      "compute_util": 0.5484,
+      "allocation_churn": 66.38,
+      "shield_interventions": 15,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13758,
+        "URLLC": 19748,
+        "mURLLC": 20153
+      },
+      "dropped_packets": {
+        "eMBB": 6177,
+        "URLLC": 0,
+        "mURLLC": 35683
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 101,
+      "policy": "static",
+      "embb_tput_mbps": 27.55,
+      "urllc_tput_mbps": 8.0,
+      "murllc_tput_mbps": 19.72,
+      "total_tput_mbps": 55.27,
+      "embb_pdr": 0.6207,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.4441,
+      "critical_cost": 0.4068,
+      "mean_step_cost": 0.4018,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.81,
+      "compute_util": 0.5527,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12300,
+        "URLLC": 20000,
+        "mURLLC": 24652
+      },
+      "dropped_packets": {
+        "eMBB": 7516,
+        "URLLC": 0,
+        "mURLLC": 30864
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 101,
+      "policy": "heuristic",
+      "embb_tput_mbps": 23.26,
+      "urllc_tput_mbps": 7.98,
+      "murllc_tput_mbps": 33.89,
+      "total_tput_mbps": 65.13,
+      "embb_pdr": 0.5242,
+      "urllc_pdr": 0.9977,
+      "murllc_pdr": 0.7625,
+      "critical_cost": 0.1745,
+      "mean_step_cost": 0.1714,
+      "urllc_p95_lat_ms": 9.85,
+      "radio_util": 0.81,
+      "compute_util": 0.6513,
+      "allocation_churn": 809.69,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10383,
+        "URLLC": 19954,
+        "mURLLC": 42365
+      },
+      "dropped_packets": {
+        "eMBB": 9426,
+        "URLLC": 46,
+        "mURLLC": 13194
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 101,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 38.66,
+      "urllc_tput_mbps": 8.0,
+      "murllc_tput_mbps": 14.66,
+      "total_tput_mbps": 61.32,
+      "embb_pdr": 0.8679,
+      "urllc_pdr": 0.9997,
+      "murllc_pdr": 0.3302,
+      "critical_cost": 0.4902,
+      "mean_step_cost": 0.4856,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.8001,
+      "compute_util": 0.6132,
+      "allocation_churn": 39.22,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17260,
+        "URLLC": 19993,
+        "mURLLC": 18329
+      },
+      "dropped_packets": {
+        "eMBB": 2627,
+        "URLLC": 7,
+        "mURLLC": 37179
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 101,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.07,
+      "urllc_tput_mbps": 8.0,
+      "murllc_tput_mbps": 16.23,
+      "total_tput_mbps": 54.3,
+      "embb_pdr": 0.677,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.3656,
+      "critical_cost": 0.4642,
+      "mean_step_cost": 0.4589,
+      "urllc_p95_lat_ms": 9.65,
+      "radio_util": 0.8063,
+      "compute_util": 0.543,
+      "allocation_churn": 73.67,
+      "shield_interventions": 13,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13423,
+        "URLLC": 20000,
+        "mURLLC": 20292
+      },
+      "dropped_packets": {
+        "eMBB": 6404,
+        "URLLC": 0,
+        "mURLLC": 35216
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 202,
+      "policy": "static",
+      "embb_tput_mbps": 27.66,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 19.45,
+      "total_tput_mbps": 55.2,
+      "embb_pdr": 0.6196,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.4332,
+      "critical_cost": 0.4151,
+      "mean_step_cost": 0.4104,
+      "urllc_p95_lat_ms": 9.72,
+      "radio_util": 0.7945,
+      "compute_util": 0.552,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12347,
+        "URLLC": 20223,
+        "mURLLC": 24317
+      },
+      "dropped_packets": {
+        "eMBB": 7579,
+        "URLLC": 0,
+        "mURLLC": 31810
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 202,
+      "policy": "heuristic",
+      "embb_tput_mbps": 23.11,
+      "urllc_tput_mbps": 8.07,
+      "murllc_tput_mbps": 33.04,
+      "total_tput_mbps": 64.22,
+      "embb_pdr": 0.518,
+      "urllc_pdr": 0.9973,
+      "murllc_pdr": 0.7353,
+      "critical_cost": 0.1947,
+      "mean_step_cost": 0.1915,
+      "urllc_p95_lat_ms": 10.04,
+      "radio_util": 0.7946,
+      "compute_util": 0.6422,
+      "allocation_churn": 474.8,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10317,
+        "URLLC": 20169,
+        "mURLLC": 41301
+      },
+      "dropped_packets": {
+        "eMBB": 9600,
+        "URLLC": 54,
+        "mURLLC": 14868
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 202,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 38.99,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 14.47,
+      "total_tput_mbps": 61.55,
+      "embb_pdr": 0.8714,
+      "urllc_pdr": 0.9998,
+      "murllc_pdr": 0.3224,
+      "critical_cost": 0.4961,
+      "mean_step_cost": 0.4918,
+      "urllc_p95_lat_ms": 9.73,
+      "radio_util": 0.7867,
+      "compute_util": 0.6155,
+      "allocation_churn": 39.77,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 17406,
+        "URLLC": 20219,
+        "mURLLC": 18087
+      },
+      "dropped_packets": {
+        "eMBB": 2568,
+        "URLLC": 4,
+        "mURLLC": 38016
+      }
+    },
+    {
+      "scenario": "murllc_storm",
+      "seed": 202,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 30.1,
+      "urllc_tput_mbps": 8.09,
+      "murllc_tput_mbps": 15.93,
+      "total_tput_mbps": 54.12,
+      "embb_pdr": 0.6744,
+      "urllc_pdr": 1.0,
+      "murllc_pdr": 0.3549,
+      "critical_cost": 0.4724,
+      "mean_step_cost": 0.4674,
+      "urllc_p95_lat_ms": 9.72,
+      "radio_util": 0.7907,
+      "compute_util": 0.5412,
+      "allocation_churn": 65.71,
+      "shield_interventions": 14,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13437,
+        "URLLC": 20223,
+        "mURLLC": 19913
+      },
+      "dropped_packets": {
+        "eMBB": 6488,
+        "URLLC": 0,
+        "mURLLC": 36203
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 42,
+      "policy": "static",
+      "embb_tput_mbps": 24.66,
+      "urllc_tput_mbps": 22.24,
+      "murllc_tput_mbps": 20.65,
+      "total_tput_mbps": 67.55,
+      "embb_pdr": 0.3117,
+      "urllc_pdr": 0.8889,
+      "murllc_pdr": 0.596,
+      "critical_cost": 0.2305,
+      "mean_step_cost": 0.227,
+      "urllc_p95_lat_ms": 16.98,
+      "radio_util": 0.8023,
+      "compute_util": 0.6755,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 11009,
+        "URLLC": 55601,
+        "mURLLC": 25810
+      },
+      "dropped_packets": {
+        "eMBB": 24308,
+        "URLLC": 6950,
+        "mURLLC": 17499
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 42,
+      "policy": "heuristic",
+      "embb_tput_mbps": 30.15,
+      "urllc_tput_mbps": 20.97,
+      "murllc_tput_mbps": 19.75,
+      "total_tput_mbps": 70.87,
+      "embb_pdr": 0.3811,
+      "urllc_pdr": 0.838,
+      "murllc_pdr": 0.5699,
+      "critical_cost": 0.2712,
+      "mean_step_cost": 0.2669,
+      "urllc_p95_lat_ms": 16.98,
+      "radio_util": 0.7958,
+      "compute_util": 0.7087,
+      "allocation_churn": 633.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13461,
+        "URLLC": 52420,
+        "mURLLC": 24689
+      },
+      "dropped_packets": {
+        "eMBB": 21857,
+        "URLLC": 10131,
+        "mURLLC": 18632
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 42,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 35.51,
+      "urllc_tput_mbps": 21.06,
+      "murllc_tput_mbps": 14.62,
+      "total_tput_mbps": 71.19,
+      "embb_pdr": 0.4488,
+      "urllc_pdr": 0.8417,
+      "murllc_pdr": 0.4223,
+      "critical_cost": 0.3292,
+      "mean_step_cost": 0.3244,
+      "urllc_p95_lat_ms": 17.05,
+      "radio_util": 0.7916,
+      "compute_util": 0.7119,
+      "allocation_churn": 31.0,
+      "shield_interventions": 16,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15851,
+        "URLLC": 52647,
+        "mURLLC": 18280
+      },
+      "dropped_packets": {
+        "eMBB": 19470,
+        "URLLC": 9904,
+        "mURLLC": 25006
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 42,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 27.83,
+      "urllc_tput_mbps": 23.19,
+      "murllc_tput_mbps": 15.59,
+      "total_tput_mbps": 66.61,
+      "embb_pdr": 0.3517,
+      "urllc_pdr": 0.927,
+      "murllc_pdr": 0.4501,
+      "critical_cost": 0.2675,
+      "mean_step_cost": 0.2643,
+      "urllc_p95_lat_ms": 16.88,
+      "radio_util": 0.7985,
+      "compute_util": 0.6661,
+      "allocation_churn": 64.97,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12422,
+        "URLLC": 57987,
+        "mURLLC": 19484
+      },
+      "dropped_packets": {
+        "eMBB": 22895,
+        "URLLC": 4564,
+        "mURLLC": 23807
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 101,
+      "policy": "static",
+      "embb_tput_mbps": 24.08,
+      "urllc_tput_mbps": 22.65,
+      "murllc_tput_mbps": 20.86,
+      "total_tput_mbps": 67.59,
+      "embb_pdr": 0.3033,
+      "urllc_pdr": 0.902,
+      "murllc_pdr": 0.5958,
+      "critical_cost": 0.223,
+      "mean_step_cost": 0.2192,
+      "urllc_p95_lat_ms": 17.06,
+      "radio_util": 0.81,
+      "compute_util": 0.6759,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10750,
+        "URLLC": 56634,
+        "mURLLC": 26071
+      },
+      "dropped_packets": {
+        "eMBB": 24696,
+        "URLLC": 6152,
+        "mURLLC": 17686
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 101,
+      "policy": "heuristic",
+      "embb_tput_mbps": 29.7,
+      "urllc_tput_mbps": 21.35,
+      "murllc_tput_mbps": 20.25,
+      "total_tput_mbps": 71.3,
+      "embb_pdr": 0.374,
+      "urllc_pdr": 0.8506,
+      "murllc_pdr": 0.5783,
+      "critical_cost": 0.2603,
+      "mean_step_cost": 0.2557,
+      "urllc_p95_lat_ms": 17.14,
+      "radio_util": 0.8048,
+      "compute_util": 0.713,
+      "allocation_churn": 693.87,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13259,
+        "URLLC": 53369,
+        "mURLLC": 25310
+      },
+      "dropped_packets": {
+        "eMBB": 22191,
+        "URLLC": 9374,
+        "mURLLC": 18457
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 101,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 34.83,
+      "urllc_tput_mbps": 21.57,
+      "murllc_tput_mbps": 14.8,
+      "total_tput_mbps": 71.21,
+      "embb_pdr": 0.4385,
+      "urllc_pdr": 0.8592,
+      "murllc_pdr": 0.4231,
+      "critical_cost": 0.3187,
+      "mean_step_cost": 0.3135,
+      "urllc_p95_lat_ms": 17.12,
+      "radio_util": 0.7997,
+      "compute_util": 0.7121,
+      "allocation_churn": 28.71,
+      "shield_interventions": 10,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15550,
+        "URLLC": 53925,
+        "mURLLC": 18506
+      },
+      "dropped_packets": {
+        "eMBB": 19908,
+        "URLLC": 8835,
+        "mURLLC": 25234
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 101,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 26.98,
+      "urllc_tput_mbps": 23.5,
+      "murllc_tput_mbps": 15.8,
+      "total_tput_mbps": 66.28,
+      "embb_pdr": 0.3397,
+      "urllc_pdr": 0.9352,
+      "murllc_pdr": 0.4515,
+      "critical_cost": 0.2625,
+      "mean_step_cost": 0.2591,
+      "urllc_p95_lat_ms": 16.96,
+      "radio_util": 0.8054,
+      "compute_util": 0.6628,
+      "allocation_churn": 63.8,
+      "shield_interventions": 13,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12045,
+        "URLLC": 58758,
+        "mURLLC": 19747
+      },
+      "dropped_packets": {
+        "eMBB": 23408,
+        "URLLC": 4070,
+        "mURLLC": 23993
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 202,
+      "policy": "static",
+      "embb_tput_mbps": 24.22,
+      "urllc_tput_mbps": 21.98,
+      "murllc_tput_mbps": 20.4,
+      "total_tput_mbps": 66.6,
+      "embb_pdr": 0.3077,
+      "urllc_pdr": 0.8819,
+      "murllc_pdr": 0.5848,
+      "critical_cost": 0.2397,
+      "mean_step_cost": 0.2357,
+      "urllc_p95_lat_ms": 17.1,
+      "radio_util": 0.7945,
+      "compute_util": 0.666,
+      "allocation_churn": 0.0,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 10814,
+        "URLLC": 54941,
+        "mURLLC": 25505
+      },
+      "dropped_packets": {
+        "eMBB": 24335,
+        "URLLC": 7354,
+        "mURLLC": 18107
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 202,
+      "policy": "heuristic",
+      "embb_tput_mbps": 29.27,
+      "urllc_tput_mbps": 20.84,
+      "murllc_tput_mbps": 19.23,
+      "total_tput_mbps": 69.34,
+      "embb_pdr": 0.3717,
+      "urllc_pdr": 0.8365,
+      "murllc_pdr": 0.5511,
+      "critical_cost": 0.2802,
+      "mean_step_cost": 0.2757,
+      "urllc_p95_lat_ms": 17.16,
+      "radio_util": 0.793,
+      "compute_util": 0.6934,
+      "allocation_churn": 756.89,
+      "shield_interventions": 0,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 13066,
+        "URLLC": 52104,
+        "mURLLC": 24035
+      },
+      "dropped_packets": {
+        "eMBB": 22084,
+        "URLLC": 10182,
+        "mURLLC": 19577
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 202,
+      "policy": "frozen_ppo",
+      "embb_tput_mbps": 34.88,
+      "urllc_tput_mbps": 20.78,
+      "murllc_tput_mbps": 14.55,
+      "total_tput_mbps": 70.21,
+      "embb_pdr": 0.4429,
+      "urllc_pdr": 0.8344,
+      "murllc_pdr": 0.4174,
+      "critical_cost": 0.3361,
+      "mean_step_cost": 0.3312,
+      "urllc_p95_lat_ms": 17.19,
+      "radio_util": 0.7863,
+      "compute_util": 0.7021,
+      "allocation_churn": 30.36,
+      "shield_interventions": 9,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 15571,
+        "URLLC": 51946,
+        "mURLLC": 18193
+      },
+      "dropped_packets": {
+        "eMBB": 19582,
+        "URLLC": 10307,
+        "mURLLC": 25394
+      }
+    },
+    {
+      "scenario": "mixed_stress",
+      "seed": 202,
+      "policy": "candidate_ppo",
+      "embb_tput_mbps": 27.11,
+      "urllc_tput_mbps": 23.04,
+      "murllc_tput_mbps": 15.45,
+      "total_tput_mbps": 65.6,
+      "embb_pdr": 0.3443,
+      "urllc_pdr": 0.9245,
+      "murllc_pdr": 0.443,
+      "critical_cost": 0.273,
+      "mean_step_cost": 0.2695,
+      "urllc_p95_lat_ms": 17.17,
+      "radio_util": 0.7897,
+      "compute_util": 0.656,
+      "allocation_churn": 68.35,
+      "shield_interventions": 11,
+      "sla_breach_ratio": 1.0,
+      "delivered_packets": {
+        "eMBB": 12102,
+        "URLLC": 57609,
+        "mURLLC": 19314
+      },
+      "dropped_packets": {
+        "eMBB": 23047,
+        "URLLC": 4705,
+        "mURLLC": 24286
+      }
+    }
+  ]
+}

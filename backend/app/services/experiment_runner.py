@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -42,6 +43,14 @@ from ..policies.static import StaticSlicingPolicy
 from ..policies.heuristic import AdaptiveDemandHeuristicPolicy
 from ..policies.rl_policy import RLPolicy
 from ..rl.control_interval import MacroControlAdapter
+from ..traffic import (
+    TrafficSourceType,
+    TrafficSourceStatus,
+    TrafficSourceInterface,
+    SyntheticTestTrafficSource,
+    TraceReplayTrafficSource,
+    LiveTelemetryTrafficSource,
+)
 
 logger = logging.getLogger("sla_guardian.orchestrator")
 
@@ -147,10 +156,50 @@ class ExperimentRunner:
         self.status = "idle"  # "idle", "running", "paused", "completed", "stopped"
         self.run_id = f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{self.active_scenario}"
         self.active_spikes: List[Dict[str, Any]] = []
-        self.run_history_telemetry: List[dict] = []
+        self.run_history_telemetry: List[Dict[str, Any]] = []
+        # Traffic source state
+        self.traces_dir = self.root_dir / "data" / "traces"
+        self.traces_dir.mkdir(parents=True, exist_ok=True)
+        self.active_traffic_source_type = "synthetic"
+        self.active_trace_file: Optional[str] = None
+        self.active_telemetry_endpoint: Optional[str] = None
+        self.replay_speed: float = 1.0
 
         # Initialize policy contexts
         self._init_contexts()
+
+    def _create_traffic_source(self) -> TrafficSourceInterface:
+        """Instantiates an independent traffic source based on active settings."""
+        if self.active_traffic_source_type == "trace_replay":
+            if not self.active_trace_file:
+                # Default to first trace found in data/traces
+                traces = list(self.traces_dir.glob("*.csv")) + list(self.traces_dir.glob("*.jsonl"))
+                if traces:
+                    self.active_trace_file = traces[0].name
+                else:
+                    raise FileNotFoundError("No trace file selected and no traces found in data/traces/.")
+            file_path = self.traces_dir / self.active_trace_file
+            if not file_path.exists():
+                file_path = Path(self.active_trace_file)
+            if not file_path.exists():
+                raise FileNotFoundError(f"Trace file not found: {self.active_trace_file}")
+            return TraceReplayTrafficSource(
+                file_path=file_path,
+                config=self.base_config,
+                replay_speed=self.replay_speed,
+                loop=True,
+            )
+        elif self.active_traffic_source_type == "live_telemetry":
+            return LiveTelemetryTrafficSource(
+                endpoint_url=self.active_telemetry_endpoint,
+                config=self.base_config,
+            )
+        else:
+            return SyntheticTestTrafficSource(
+                config=self.base_config,
+                scenario_data=self.raw_scenario_data,
+                seed=self.active_seed,
+            )
 
     def _init_model(self):
         """Attempts to load pre-trained PPO checkpoint without training."""
@@ -166,7 +215,8 @@ class ExperimentRunner:
                 logger.info(f"Loaded PPO inference checkpoint from {self.checkpoint_path}")
 
                 # Load metadata if present to get genuine final_lambda
-                meta_path = self.checkpoint_path.parent / "agent_metadata.json"
+                meta_name = "candidate_metadata.json" if "candidate" in self.checkpoint_path.name else "agent_metadata.json"
+                meta_path = self.checkpoint_path.parent / meta_name
                 if meta_path.exists():
                     try:
                         with open(meta_path, "r", encoding="utf-8") as f:
@@ -182,6 +232,28 @@ class ExperimentRunner:
             self.model_loaded = False
             self.model_error = f"Error loading checkpoint {self.checkpoint_path}: {e}"
             logger.error(self.model_error)
+
+    def switch_model_checkpoint(self, model_key: str) -> Dict[str, Any]:
+        """Switches between 'agent.zip' (Frozen baseline) and 'candidate_agent.zip' (Remediated multi-scenario candidate)."""
+        filename = "candidate_agent.zip" if "candidate" in model_key.lower() else "agent.zip"
+        target_path = self.root_dir / "models" / filename
+        if not target_path.exists():
+            raise FileNotFoundError(f"Model checkpoint not found: {target_path}")
+
+        self.checkpoint_path = target_path
+        self._init_model()
+        self.contexts["agent"] = PolicyContext(
+            policy=self.rl_policy_instance,
+            base_config=self.base_config,
+            scenario_data=self.raw_scenario_data,
+            steps_per_interval=self.steps_per_interval,
+        )
+        return {
+            "model_path": str(self.checkpoint_path),
+            "checkpoint_name": filename,
+            "model_loaded": self.model_loaded,
+            "trained_lambda": self.trained_lambda,
+        }
 
     def _init_contexts(self):
         """Initializes or resets policy contexts for Static, Heuristic, and Agent."""
@@ -236,6 +308,10 @@ class ExperimentRunner:
         seed: int = 42,
         max_macro_steps: int = 100,
         selected_policies: Optional[List[str]] = None,
+        traffic_source_type: str = "synthetic",
+        trace_file: Optional[str] = None,
+        telemetry_endpoint: Optional[str] = None,
+        replay_speed: float = 1.0,
     ) -> Dict[str, Any]:
         """Starts a new experiment, canceling any prior background runner."""
         async with self.lock:
@@ -255,9 +331,20 @@ class ExperimentRunner:
             self.status = "running"
             self.active_spikes.clear()
             self.run_history_telemetry.clear()
-            self.run_id = f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{self.active_scenario}"
+
+            # Set traffic source configuration
+            self.active_traffic_source_type = traffic_source_type
+            if trace_file:
+                self.active_trace_file = trace_file
+            if telemetry_endpoint:
+                self.active_telemetry_endpoint = telemetry_endpoint
+            self.replay_speed = replay_speed
+
+            self.run_id = f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{self.active_traffic_source_type}_{self.active_scenario}"
 
             for ctx in self.contexts.values():
+                source = self._create_traffic_source()
+                ctx.simulator.set_traffic_source(source)
                 ctx.reset(seed=self.active_seed, scenario_name=self.active_scenario)
 
             # Persist initial run configuration
@@ -272,6 +359,8 @@ class ExperimentRunner:
                 "scenario": self.active_scenario,
                 "seed": self.active_seed,
                 "max_macro_steps": self.max_macro_steps,
+                "traffic_source_type": self.active_traffic_source_type,
+                "trace_file": self.active_trace_file,
             }
 
     async def _run_loop(self):
@@ -485,6 +574,31 @@ class ExperimentRunner:
                 )
             policy_map[key] = pt
 
+        # Extract traffic source metadata and input measurements
+        first_ctx = next(iter(self.contexts.values()))
+        sim = first_ctx.simulator
+        ts_meta = sim.traffic_source.get_metadata()
+        ts_info = {
+            "source_type": ts_meta.source_type.value,
+            "source_name": ts_meta.source_name,
+            "status": ts_meta.status.value,
+            "duration_sec": ts_meta.duration_sec,
+            "classification_coverage_pct": ts_meta.classification_coverage_pct,
+            "unclassified_count": ts_meta.unclassified_count,
+            "data_quality_flags": ts_meta.data_quality_flags,
+        }
+
+        # Input measurements from source
+        input_meas: Dict[str, Any] = {}
+        if sim.last_step_traffic:
+            input_meas = {
+                "offered_mbps": {s.value: sim.last_step_traffic.offered_mbps.get(s, 0.0) for s in CANONICAL_SLICE_IDS},
+                "offered_packets": {s.value: len(sim.last_step_traffic.packets.get(s, [])) for s in CANONICAL_SLICE_IDS},
+                "unclassified_packets": len(sim.last_step_traffic.unclassified_events),
+                "unclassified_mbps": sim.last_step_traffic.unclassified_mbps,
+                "is_end_of_trace": sim.last_step_traffic.is_end_of_trace,
+            }
+
         return TelemetryEvent(
             run_id=self.run_id,
             sequence_number=self.sequence_number,
@@ -495,6 +609,8 @@ class ExperimentRunner:
             run_status=self.status,
             seed=self.active_seed,
             synchronization_status="perfect_matched_seed",
+            traffic_source=ts_info,
+            input_measurements=input_meas,
             policies=policy_map,
         )
 
@@ -518,6 +634,8 @@ class ExperimentRunner:
         self,
         scenario: Optional[str] = None,
         seed: Optional[int] = None,
+        traffic_source_type: Optional[str] = None,
+        trace_file: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Resets the active experiment to step 0 with the given seed and scenario."""
         async with self.lock:
@@ -532,6 +650,10 @@ class ExperimentRunner:
                 self.active_scenario = scenario
             if seed is not None:
                 self.active_seed = seed
+            if traffic_source_type:
+                self.active_traffic_source_type = traffic_source_type
+            if trace_file:
+                self.active_trace_file = trace_file
 
             self.current_macro_step = 0
             self.sim_time_sec = 0.0
@@ -542,6 +664,8 @@ class ExperimentRunner:
             self.run_id = f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{self.active_scenario}"
 
             for ctx in self.contexts.values():
+                source = self._create_traffic_source()
+                ctx.simulator.set_traffic_source(source)
                 ctx.reset(seed=self.active_seed, scenario_name=self.active_scenario)
 
             # Broadcast reset snapshot
@@ -552,8 +676,86 @@ class ExperimentRunner:
                 "status": "reset_successful",
                 "scenario": self.active_scenario,
                 "seed": self.active_seed,
+                "traffic_source_type": self.active_traffic_source_type,
+                "trace_file": self.active_trace_file,
                 "step": 0,
             }
+
+    def list_traffic_sources(self) -> Dict[str, Any]:
+        """Lists all available synthetic profiles, recorded trace files, and live telemetry status."""
+        profiles = self.raw_scenario_data.get("traffic_profiles", {})
+        synth_list = []
+        for sc_id, sc_data in profiles.items():
+            synth_list.append({
+                "id": sc_id,
+                "description": sc_data.get("description", ""),
+                "nominal_demand_mbps": sc_data.get("nominal_demand_mbps", {}),
+            })
+
+        trace_files = []
+        for ext in ("*.csv", "*.jsonl", "*.json", "*.pcap"):
+            for f in self.traces_dir.glob(ext):
+                stat = f.stat()
+                trace_files.append({
+                    "file_name": f.name,
+                    "format": f.suffix.lstrip(".").lower(),
+                    "size_bytes": stat.st_size,
+                    "modified_time": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                })
+
+        live_configured = bool(self.active_telemetry_endpoint or os.getenv("TELEMETRY_ENDPOINT_URL"))
+        live_info = {
+            "configured": live_configured,
+            "endpoint_url": self.active_telemetry_endpoint or os.getenv("TELEMETRY_ENDPOINT_URL") or "NOT_CONFIGURED",
+            "status": "READY" if live_configured else "DISCONNECTED",
+        }
+
+        return {
+            "supported_source_types": ["synthetic", "trace_replay", "live_telemetry"],
+            "active_source_type": self.active_traffic_source_type,
+            "active_trace_file": self.active_trace_file,
+            "synthetic_scenarios": synth_list,
+            "recorded_traces": trace_files,
+            "live_telemetry": live_info,
+        }
+
+    def validate_trace_file(self, file_name: str, qos_mapping: Optional[dict] = None) -> Dict[str, Any]:
+        """Validates trace format, sample count, time range, and classification coverage."""
+        file_path = self.traces_dir / file_name
+        if not file_path.exists():
+            file_path = Path(file_name)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Trace file not found: {file_name}")
+
+        source = TraceReplayTrafficSource(
+            file_path=file_path,
+            config=self.base_config,
+            qos_mapping=qos_mapping,
+        )
+        is_valid, messages = source.validate()
+        meta = source.get_metadata()
+
+        return {
+            "valid": is_valid,
+            "file_name": file_path.name,
+            "total_records": meta.total_records,
+            "duration_sec": meta.duration_sec,
+            "classification_coverage_pct": meta.classification_coverage_pct,
+            "unclassified_count": meta.unclassified_count,
+            "slice_distribution": meta.slice_distribution,
+            "messages": messages,
+            "time_range_sec": meta.time_range_sec,
+            "data_quality_flags": meta.data_quality_flags,
+        }
+
+    def get_traffic_status(self) -> Dict[str, Any]:
+        """Returns metadata for the currently active traffic source."""
+        first_ctx = next(iter(self.contexts.values()))
+        meta = first_ctx.simulator.traffic_source.get_metadata()
+        res = meta.model_dump()
+        res["active_source_type"] = meta.source_type.value
+        res["diagnostics"] = first_ctx.simulator.traffic_source.get_diagnostics()
+        return res
 
     async def inject_spike(
         self,

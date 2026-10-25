@@ -40,21 +40,28 @@ class ViolationCostAdapter:
         """
         crit_offered = 0
         crit_dropped = 0
+        crit_delivered = 0
 
         # Primary source: step_metrics packet counts
         if step_metrics.offered_packets and step_metrics.dropped_packets:
             for s in CRITICAL_SLICES:
                 crit_offered += step_metrics.offered_packets.get(s, 0)
                 crit_dropped += step_metrics.dropped_packets.get(s, 0)
+                if step_metrics.delivered_packets:
+                    crit_delivered += step_metrics.delivered_packets.get(s, 0)
         elif diagnostics and diagnostics.extra_info and "slice_diagnostics" in diagnostics.extra_info:
             diags = diagnostics.extra_info["slice_diagnostics"]
             for s in CRITICAL_SLICES:
                 s_diag = diags.get(s.value, {})
                 crit_offered += s_diag.get("offered_packets", 0)
                 crit_dropped += s_diag.get("dropped_packets", 0)
+                crit_delivered += s_diag.get("delivered_packets", 0)
 
-        if crit_offered == 0:
+        # Denominator: offered packets or finished packets (delivered + dropped)
+        # Guarantees consistency between critical-slice cost and packet-delivery ratio (Cost ~= 1 - PDR)
+        denom = max(crit_offered, crit_dropped + crit_delivered)
+        if denom == 0:
             return 0.0
 
-        cost = float(crit_dropped) / float(crit_offered)
+        cost = float(crit_dropped) / float(denom)
         return float(min(1.0, max(0.0, cost)))

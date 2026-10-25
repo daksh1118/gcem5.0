@@ -1,0 +1,27 @@
+{
+  "model_name": "constrained_ppo_sla_guardian",
+  "saved_path": "C:\\gcemhacks5.0\\models\\candidate_agent.zip",
+  "artifact_path": "C:\\gcemhacks5.0\\backend\\artifacts\\rl\\candidate_agent.zip",
+  "total_timesteps": 15000,
+  "completed_episodes": 151,
+  "training_duration_sec": 266.91,
+  "seed": 42,
+  "scenario": [
+    "normal",
+    "embb_surge",
+    "urllc_burst",
+    "murllc_storm",
+    "mixed_stress"
+  ],
+  "cost_limit": 0.01,
+  "lagrange_lr": 0.05,
+  "final_lambda": 1.1646,
+  "observation_dim": 12,
+  "action_dim": 6,
+  "device": "cpu",
+  "library_versions": {
+    "torch": "2.14.1+cpu",
+    "stable_baselines3": "2.9.0",
+    "gymnasium": "0.29.1"
+  }
+}

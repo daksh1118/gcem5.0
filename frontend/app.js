@@ -19,10 +19,19 @@ const state = {
   scenarios: [],
   activeSpike: null,
 
+  // Traffic Source State
+  trafficSourceType: "synthetic",
+  selectedTraceFile: null,
+  traceFiles: [],
+  replaySpeed: 1.0,
+  telemetryEndpoint: "",
+  telemetryProvider: "generic_json",
+  activeTrafficSource: null,
+
   // Historical series for charts (bounded to last 50 steps)
   history: {
     steps: [],
-    embbTput: { static: [], heuristic: [], agent: [] },
+    embbTput: { static: [], heuristic: [], agent: [], offered: [] },
     criticalDrops: { static: [], heuristic: [], agent: [] },
     radioUtil: { static: [], heuristic: [], agent: [] },
     lambda: [],
@@ -62,6 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCharts();
   fetchHealth();
   fetchScenarios();
+  fetchTrafficSources();
   connectWebSocket();
   setupEventListeners();
 });
@@ -93,8 +103,136 @@ async function fetchScenarios() {
   }
 }
 
+async function fetchTrafficSources() {
+  try {
+    const res = await fetch(`${API_BASE}/api/traffic/sources`);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.traceFiles = data.trace_files || [];
+    populateTraceDropdown(state.traceFiles);
+  } catch (err) {
+    console.warn("Error fetching traffic sources:", err);
+  }
+}
+
+function populateTraceDropdown(files) {
+  const select = document.getElementById("traceFileSelect");
+  if (!select) return;
+  select.innerHTML = "";
+  if (!files || files.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "No traces found in data/traces/";
+    select.appendChild(opt);
+    state.selectedTraceFile = null;
+    return;
+  }
+  files.forEach((f) => {
+    const opt = document.createElement("option");
+    opt.value = f.name;
+    const sizeKb = (f.size_bytes / 1024).toFixed(1);
+    opt.textContent = `${f.name} (${f.format.toUpperCase()}, ${sizeKb} KB)`;
+    select.appendChild(opt);
+  });
+  state.selectedTraceFile = files[0].name;
+}
+
+async function inspectTrace(fileName) {
+  if (!fileName) {
+    alert("Please select a trace file first.");
+    return;
+  }
+  const inspectBox = document.getElementById("traceInspectionBox");
+  const content = document.getElementById("traceInspectionContent");
+  const quickSummary = document.getElementById("traceQuickSummary");
+  const summaryText = document.getElementById("traceSummaryText");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/traffic/validate-trace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_name: fileName }),
+    });
+    const data = await res.json();
+
+    if (!data.valid) {
+      if (content) {
+        content.innerHTML = `<span style="color: var(--status-breach);">⚠️ Trace Validation Failed: ${data.errors ? data.errors.join(", ") : "Unknown error"}</span>`;
+      }
+      if (inspectBox) inspectBox.style.display = "block";
+      return;
+    }
+
+    const sliceCounts = data.slice_packet_counts || {};
+    const unclass = data.unclassified_packets || 0;
+    const cov = data.classification_coverage ? (data.classification_coverage * 100).toFixed(1) : "100.0";
+    const dur = data.duration_sec ? data.duration_sec.toFixed(2) : "0.00";
+
+    if (summaryText) {
+      summaryText.textContent = `${fileName} | ${data.total_packets.toLocaleString()} pkts | ${dur}s | Cov: ${cov}%`;
+    }
+    if (quickSummary) quickSummary.style.display = "flex";
+
+    if (content) {
+      content.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
+          <div><strong>File:</strong> <code>${data.file_name}</code> (${data.format ? data.format.toUpperCase() : "TRACE"})</div>
+          <div><strong>Packets:</strong> ${data.total_packets.toLocaleString()}</div>
+          <div><strong>Duration:</strong> ${dur}s (~${Math.ceil(data.duration_sec * 10)} macro steps)</div>
+          <div><strong>Coverage:</strong> <span style="color: ${cov > 90 ? 'var(--status-pass)' : 'var(--status-warn)'}; font-weight: 700;">${cov}%</span></div>
+          <div><strong>eMBB:</strong> ${sliceCounts.eMBB || 0} pkts</div>
+          <div><strong>URLLC:</strong> ${sliceCounts.URLLC || 0} pkts</div>
+          <div><strong>mURLLC:</strong> ${sliceCounts.mURLLC || 0} pkts</div>
+          <div><strong>Unclassified:</strong> <span style="color: ${unclass > 0 ? 'var(--status-warn)' : 'var(--status-pass)'};">${unclass} pkts</span></div>
+        </div>
+        ${unclass > 0 ? '<div style="margin-top: 6px; color: var(--status-warn);">⚠️ Note: Source trace contains unclassified flows without standard 3GPP 5QI / DSCP labels. Preserved as unclassified (not inferred from traffic volume).</div>' : ''}
+      `;
+    }
+    if (inspectBox) inspectBox.style.display = "block";
+    addEvent(`Trace inspected: ${fileName} (${data.total_packets} pkts, ${dur}s, cov=${cov}%)`, "info");
+  } catch (err) {
+    console.error("Inspect trace error:", err);
+    alert(`Failed to validate trace: ${err.message}`);
+  }
+}
+
+async function uploadTraceFile(file) {
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    addEvent(`Uploading trace: ${file.name}...`, "info");
+    const res = await fetch(`${API_BASE}/api/traffic/upload-trace`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Upload failed: ${err.detail || res.statusText}`);
+      return;
+    }
+    const data = await res.json();
+    addEvent(`Trace uploaded successfully: ${data.file_name} (${(data.size_bytes / 1024).toFixed(1)} KB)`, "info");
+    await fetchTrafficSources();
+    const select = document.getElementById("traceFileSelect");
+    if (select) select.value = data.file_name;
+    state.selectedTraceFile = data.file_name;
+    await inspectTrace(data.file_name);
+  } catch (err) {
+    console.error("Upload error:", err);
+    alert(`Failed to upload trace: ${err.message}`);
+  }
+}
+
 async function startRun() {
+  const trafficTypeEl = document.getElementById("trafficSourceTypeSelect");
+  const trafficSourceType = trafficTypeEl ? trafficTypeEl.value : "synthetic";
+
   const scenarioSelect = document.getElementById("scenarioSelect");
+  const traceFileSelect = document.getElementById("traceFileSelect");
+  const replaySpeedInput = document.getElementById("replaySpeedInput");
+  const telemetryEndpointInput = document.getElementById("telemetryEndpointInput");
   const seedInput = document.getElementById("seedInput");
   const maxStepsInput = document.getElementById("maxStepsInput");
 
@@ -103,6 +241,10 @@ async function startRun() {
     seed: seedInput ? parseInt(seedInput.value, 10) : 42,
     max_macro_steps: maxStepsInput ? parseInt(maxStepsInput.value, 10) : 100,
     selected_policies: ["static", "heuristic", "agent"],
+    traffic_source_type: trafficSourceType,
+    trace_file: trafficSourceType === "trace_replay" ? (traceFileSelect ? traceFileSelect.value : null) : null,
+    telemetry_endpoint: trafficSourceType === "live_telemetry" ? (telemetryEndpointInput ? telemetryEndpointInput.value : null) : null,
+    replay_speed: replaySpeedInput ? parseFloat(replaySpeedInput.value) : 1.0,
   };
 
   try {
@@ -117,7 +259,10 @@ async function startRun() {
       return;
     }
     const data = await res.json();
-    addEvent(`Experiment started: ${data.scenario} (seed=${data.seed})`, "info");
+    const sourceLabel = trafficSourceType === "trace_replay"
+      ? `Trace Replay (${payload.trace_file}, ${payload.replay_speed}x)`
+      : (trafficSourceType === "live_telemetry" ? `Live Telemetry (${payload.telemetry_endpoint || "unconfigured"})` : `Synthetic (${data.scenario})`);
+    addEvent(`Experiment started: ${sourceLabel} (seed=${data.seed})`, "info");
     resetChartHistory();
     fetchSummary();
   } catch (err) {
@@ -146,12 +291,17 @@ async function resumeRun() {
 }
 
 async function resetExperiment() {
+  const trafficTypeEl = document.getElementById("trafficSourceTypeSelect");
+  const trafficSourceType = trafficTypeEl ? trafficTypeEl.value : "synthetic";
   const scenarioSelect = document.getElementById("scenarioSelect");
+  const traceFileSelect = document.getElementById("traceFileSelect");
   const seedInput = document.getElementById("seedInput");
 
   const payload = {
     scenario: scenarioSelect ? scenarioSelect.value : state.activeScenario,
     seed: seedInput ? parseInt(seedInput.value, 10) : 42,
+    traffic_source_type: trafficSourceType,
+    trace_file: trafficSourceType === "trace_replay" ? (traceFileSelect ? traceFileSelect.value : null) : null,
   };
 
   try {
@@ -162,7 +312,7 @@ async function resetExperiment() {
     });
     const data = await res.json();
     resetChartHistory();
-    addEvent(`Simulation reset to step 0`, "info");
+    addEvent(`Simulation reset to step 0 (${trafficSourceType})`, "info");
     fetchSummary();
   } catch (err) {
     console.error("Reset failed:", err);
@@ -282,6 +432,26 @@ function handleTelemetryEvent(evt) {
   state.activeScenario = evt.active_scenario || state.activeScenario;
 
   updateRunStatusHeader();
+
+  // Update Traffic Source indicator in header & toolbar
+  if (evt.traffic_source) {
+    const ts = evt.traffic_source;
+    state.activeTrafficSource = ts;
+    const badge = document.getElementById("trafficSourceBadge");
+    if (badge) {
+      const typeLabel = ts.source_type === "trace_replay" ? "TRACE" : (ts.source_type === "live_telemetry" ? "LIVE" : "SYNTHETIC");
+      badge.textContent = `${typeLabel}: ${ts.source_name || ""}`;
+      badge.className = `status-badge ${ts.status === "active" ? "running" : (ts.status === "error" || ts.status === "disconnected" ? "degraded" : "idle")}`;
+    }
+
+    if (ts.source_type === "live_telemetry") {
+      const pill = document.getElementById("telemetryStatusPill");
+      if (pill) {
+        pill.textContent = (ts.status || "UNKNOWN").toUpperCase();
+        pill.className = `status-badge ${ts.status === "active" ? "healthy" : (ts.status === "stale" ? "paused" : "degraded")}`;
+      }
+    }
+  }
 
   // Render the Three Policy Panels
   const policies = evt.policies;
@@ -477,13 +647,62 @@ function initCharts() {
           { label: "Static", data: [], borderColor: COLORS.static, borderWidth: 1.5, pointRadius: 0 },
           { label: "Heuristic", data: [], borderColor: COLORS.heuristic, borderWidth: 1.5, pointRadius: 0 },
           { label: "PPO Agent", data: [], borderColor: COLORS.agent, borderWidth: 2.2, pointRadius: 0 },
+          { label: "Offered Demand (Source)", data: [], borderColor: "#F59E0B", borderDash: [4, 4], borderWidth: 1.8, pointRadius: 0 },
         ],
       },
       options: {
         ...commonOptions,
         scales: {
           ...commonOptions.scales,
-          y: { ...commonOptions.scales.y, title: { display: true, text: "Mbps", color: "#91A0B7", font: { size: 10 } } },
+          y: { ...commonOptions.scales.y, title: { display: true, text: "eMBB Mbps", color: "#91A0B7", font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  // 1b. URLLC Throughput Chart
+  const ctxUrllc = document.getElementById("chartUrllcTput");
+  if (ctxUrllc && typeof Chart !== "undefined") {
+    state.charts.urllc = new Chart(ctxUrllc, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          { label: "Static URLLC", data: [], borderColor: COLORS.static, borderWidth: 1.5, pointRadius: 0 },
+          { label: "Heuristic URLLC", data: [], borderColor: COLORS.heuristic, borderWidth: 1.5, pointRadius: 0 },
+          { label: "PPO Agent URLLC", data: [], borderColor: "#14B8A6", borderWidth: 2.2, pointRadius: 0 },
+          { label: "Offered URLLC (Source)", data: [], borderColor: "#F59E0B", borderDash: [4, 4], borderWidth: 1.8, pointRadius: 0 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          ...commonOptions.scales,
+          y: { ...commonOptions.scales.y, title: { display: true, text: "URLLC Mbps", color: "#91A0B7", font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  // 1c. mURLLC Throughput Chart
+  const ctxMurllc = document.getElementById("chartMurllcTput");
+  if (ctxMurllc && typeof Chart !== "undefined") {
+    state.charts.murllc = new Chart(ctxMurllc, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          { label: "Static mURLLC", data: [], borderColor: COLORS.static, borderWidth: 1.5, pointRadius: 0 },
+          { label: "Heuristic mURLLC", data: [], borderColor: COLORS.heuristic, borderWidth: 1.5, pointRadius: 0 },
+          { label: "PPO Agent mURLLC", data: [], borderColor: "#F59E0B", borderWidth: 2.2, pointRadius: 0 },
+          { label: "Offered mURLLC (Source)", data: [], borderColor: "#F97316", borderDash: [4, 4], borderWidth: 1.8, pointRadius: 0 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          ...commonOptions.scales,
+          y: { ...commonOptions.scales.y, title: { display: true, text: "mURLLC Mbps", color: "#91A0B7", font: { size: 10 } } },
         },
       },
     });
@@ -558,10 +777,58 @@ function updateChartData(evt) {
     const hT = p.heuristic ? p.heuristic.delivered_tput_mbps.eMBB || 0 : 0;
     const aT = p.agent ? p.agent.delivered_tput_mbps.eMBB || 0 : 0;
 
+    let offeredDemand = null;
+    if (evt.input_measurements && evt.input_measurements.offered_mbps && evt.input_measurements.offered_mbps.eMBB !== undefined) {
+      offeredDemand = evt.input_measurements.offered_mbps.eMBB;
+    } else if (p.agent && p.agent.offered_demand_mbps && p.agent.offered_demand_mbps.eMBB !== undefined) {
+      offeredDemand = p.agent.offered_demand_mbps.eMBB;
+    }
+
     pushData(state.charts.tput, 0, sT, MAX_HISTORY);
     pushData(state.charts.tput, 1, hT, MAX_HISTORY);
     pushData(state.charts.tput, 2, aT, MAX_HISTORY);
+    pushData(state.charts.tput, 3, offeredDemand, MAX_HISTORY);
     state.charts.tput.update();
+  }
+
+  // 1b. URLLC Throughput Chart
+  if (state.charts.urllc) {
+    const sU = p.static ? p.static.delivered_tput_mbps.URLLC || 0 : 0;
+    const hU = p.heuristic ? p.heuristic.delivered_tput_mbps.URLLC || 0 : 0;
+    const aU = p.agent ? p.agent.delivered_tput_mbps.URLLC || 0 : 0;
+
+    let offeredUrllc = null;
+    if (evt.input_measurements && evt.input_measurements.offered_mbps && evt.input_measurements.offered_mbps.URLLC !== undefined) {
+      offeredUrllc = evt.input_measurements.offered_mbps.URLLC;
+    } else if (p.agent && p.agent.offered_demand_mbps && p.agent.offered_demand_mbps.URLLC !== undefined) {
+      offeredUrllc = p.agent.offered_demand_mbps.URLLC;
+    }
+
+    pushData(state.charts.urllc, 0, sU, MAX_HISTORY);
+    pushData(state.charts.urllc, 1, hU, MAX_HISTORY);
+    pushData(state.charts.urllc, 2, aU, MAX_HISTORY);
+    pushData(state.charts.urllc, 3, offeredUrllc, MAX_HISTORY);
+    state.charts.urllc.update();
+  }
+
+  // 1c. mURLLC Throughput Chart
+  if (state.charts.murllc) {
+    const sM = p.static ? p.static.delivered_tput_mbps.mURLLC || 0 : 0;
+    const hM = p.heuristic ? p.heuristic.delivered_tput_mbps.mURLLC || 0 : 0;
+    const aM = p.agent ? p.agent.delivered_tput_mbps.mURLLC || 0 : 0;
+
+    let offeredMurllc = null;
+    if (evt.input_measurements && evt.input_measurements.offered_mbps && evt.input_measurements.offered_mbps.mURLLC !== undefined) {
+      offeredMurllc = evt.input_measurements.offered_mbps.mURLLC;
+    } else if (p.agent && p.agent.offered_demand_mbps && p.agent.offered_demand_mbps.mURLLC !== undefined) {
+      offeredMurllc = p.agent.offered_demand_mbps.mURLLC;
+    }
+
+    pushData(state.charts.murllc, 0, sM, MAX_HISTORY);
+    pushData(state.charts.murllc, 1, hM, MAX_HISTORY);
+    pushData(state.charts.murllc, 2, aM, MAX_HISTORY);
+    pushData(state.charts.murllc, 3, offeredMurllc, MAX_HISTORY);
+    state.charts.murllc.update();
   }
 
   // 2. Drops Chart
@@ -740,24 +1007,134 @@ function setupEventListeners() {
     btnSpikeMurllc.addEventListener("click", () => triggerSpike("mURLLC", 3.0, 20));
   }
 
-  // Chart Tabs Switching
+  // Traffic Ingestion Controls
+  const trafficTypeSelect = document.getElementById("trafficSourceTypeSelect");
+  const synthGroup = document.getElementById("syntheticControls");
+  const traceGroup = document.getElementById("traceControls");
+  const telemGroup = document.getElementById("telemetryControls");
+  const traceBox = document.getElementById("traceInspectionBox");
+  const quickSumm = document.getElementById("traceQuickSummary");
+
+  if (trafficTypeSelect) {
+    trafficTypeSelect.addEventListener("change", () => {
+      const val = trafficTypeSelect.value;
+      state.trafficSourceType = val;
+      if (val === "synthetic") {
+        if (synthGroup) synthGroup.style.display = "flex";
+        if (traceGroup) traceGroup.style.display = "none";
+        if (telemGroup) telemGroup.style.display = "none";
+        if (traceBox) traceBox.style.display = "none";
+        if (quickSumm) quickSumm.style.display = "none";
+      } else if (val === "trace_replay") {
+        if (synthGroup) synthGroup.style.display = "none";
+        if (traceGroup) traceGroup.style.display = "flex";
+        if (telemGroup) telemGroup.style.display = "none";
+        const traceSelect = document.getElementById("traceFileSelect");
+        if (traceSelect && traceSelect.value) {
+          inspectTrace(traceSelect.value);
+        }
+      } else if (val === "live_telemetry") {
+        if (synthGroup) synthGroup.style.display = "none";
+        if (traceGroup) traceGroup.style.display = "none";
+        if (telemGroup) telemGroup.style.display = "flex";
+        if (traceBox) traceBox.style.display = "none";
+        if (quickSumm) quickSumm.style.display = "none";
+      }
+    });
+  }
+
+  // Trace Selection Change
+  const traceSelect = document.getElementById("traceFileSelect");
+  if (traceSelect) {
+    traceSelect.addEventListener("change", () => {
+      state.selectedTraceFile = traceSelect.value;
+      if (traceSelect.value) {
+        inspectTrace(traceSelect.value);
+      }
+    });
+  }
+
+  // Trace Inspect Button
+  const btnInspect = document.getElementById("btnInspectTrace");
+  if (btnInspect) {
+    btnInspect.addEventListener("click", () => {
+      const select = document.getElementById("traceFileSelect");
+      if (select && select.value) {
+        inspectTrace(select.value);
+      }
+    });
+  }
+
+  // Close Trace Inspection Box
+  const btnCloseInspect = document.getElementById("btnCloseTraceInspection");
+  if (btnCloseInspect) {
+    btnCloseInspect.addEventListener("click", () => {
+      if (traceBox) traceBox.style.display = "none";
+    });
+  }
+
+  // Trace Upload
+  const btnUpload = document.getElementById("btnUploadTrace");
+  const fileInput = document.getElementById("traceFileInput");
+  if (btnUpload && fileInput) {
+    btnUpload.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        uploadTraceFile(e.target.files[0]);
+      }
+    });
+  }
+
+  // Chart Tabs Switching (eMBB, URLLC, mURLLC, Drops, Util)
   const tabTput = document.getElementById("tabTput");
+  const tabUrllc = document.getElementById("tabUrllc");
+  const tabMurllc = document.getElementById("tabMurllc");
   const tabDrops = document.getElementById("tabDrops");
   const tabUtil = document.getElementById("tabUtil");
 
   const wrapTput = document.getElementById("wrapTput");
+  const wrapUrllc = document.getElementById("wrapUrllc");
+  const wrapMurllc = document.getElementById("wrapMurllc");
   const wrapDrops = document.getElementById("wrapDrops");
   const wrapUtil = document.getElementById("wrapUtil");
 
-  if (tabTput && tabDrops && tabUtil) {
-    tabTput.addEventListener("click", () => {
-      setActiveTab(tabTput, wrapTput, [tabDrops, tabUtil], [wrapDrops, wrapUtil]);
-    });
-    tabDrops.addEventListener("click", () => {
-      setActiveTab(tabDrops, wrapDrops, [tabTput, tabUtil], [wrapTput, wrapUtil]);
-    });
-    tabUtil.addEventListener("click", () => {
-      setActiveTab(tabUtil, wrapUtil, [tabTput, tabDrops], [wrapTput, wrapDrops]);
+  const allTabs = [tabTput, tabUrllc, tabMurllc, tabDrops, tabUtil].filter(Boolean);
+  const allWraps = [wrapTput, wrapUrllc, wrapMurllc, wrapDrops, wrapUtil].filter(Boolean);
+
+  const tabPairs = [
+    { tab: tabTput, wrap: wrapTput },
+    { tab: tabUrllc, wrap: wrapUrllc },
+    { tab: tabMurllc, wrap: wrapMurllc },
+    { tab: tabDrops, wrap: wrapDrops },
+    { tab: tabUtil, wrap: wrapUtil },
+  ];
+
+  tabPairs.forEach(({ tab, wrap }) => {
+    if (tab && wrap) {
+      tab.addEventListener("click", () => {
+        allTabs.forEach((t) => t.classList.remove("active"));
+        allWraps.forEach((w) => (w.style.display = "none"));
+        tab.classList.add("active");
+        wrap.style.display = "block";
+      });
+    }
+  });
+
+  // Model Checkpoint Selector
+  const modelSelect = document.getElementById("modelCheckpointSelect");
+  if (modelSelect) {
+    modelSelect.addEventListener("change", async (e) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/models/select`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: e.target.value }),
+        });
+        const data = await res.json();
+        addEvent(`Active RL Model switched to: ${data.checkpoint_name} (λ=${data.trained_lambda.toFixed(4)})`, "info");
+      } catch (err) {
+        console.error("Failed to switch model:", err);
+      }
     });
   }
 }

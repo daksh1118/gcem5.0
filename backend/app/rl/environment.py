@@ -4,7 +4,7 @@ Wraps FallbackNetworkSimulator into a standard Gymnasium environment adhering to
 merged 100 ms macro-control interval and 6D continuous action space.
 """
 
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Union, Sequence
 import json
 from pathlib import Path
 import numpy as np
@@ -35,7 +35,7 @@ class SliceGymnasiumEnv(gym.Env):
     def __init__(
         self,
         config: Optional[RunConfig] = None,
-        scenario_name: str = "normal",
+        scenario_name: Union[str, Sequence[str]] = "normal",
         seed: int = 42,
         steps_per_interval: int = 10,
         max_macro_steps: int = 200,
@@ -43,7 +43,14 @@ class SliceGymnasiumEnv(gym.Env):
         lagrange_lr: float = 0.05,
     ):
         super().__init__()
-        self.scenario_name = scenario_name
+        if isinstance(scenario_name, (list, tuple)):
+            self.scenarios = list(scenario_name)
+            self.scenario_name = self.scenarios[0]
+        else:
+            self.scenarios = [str(scenario_name)]
+            self.scenario_name = str(scenario_name)
+        self.scenario_idx = 0
+
         self.seed_val = seed
         self.steps_per_interval = max(1, steps_per_interval)
         self.max_macro_steps = max(1, max_macro_steps)
@@ -103,8 +110,12 @@ class SliceGymnasiumEnv(gym.Env):
         self.current_state: Optional[NetworkState] = None
         self.current_macro_step: int = 0
         self.episode_costs: list[float] = []
+        self.last_completed_episode_cost: float = 0.0
         self.last_obs: Optional[np.ndarray] = None
-        self.active_lambda: float = 0.0
+
+    @property
+    def active_lambda(self) -> float:
+        return self.lagrangian.value
 
     def reset(
         self,
@@ -119,10 +130,26 @@ class SliceGymnasiumEnv(gym.Env):
         if seed is not None:
             self.seed_val = seed
 
-        self.current_state = self.simulator.reset(seed=self.seed_val)
-        self.current_macro_step = 0
+        # Save previous completed episode cost before clearing
+        if self.episode_costs:
+            self.last_completed_episode_cost = float(np.mean(self.episode_costs))
         self.episode_costs.clear()
-        self.active_lambda = self.lagrangian.value
+
+        # Multi-scenario cycling if multiple scenarios provided
+        if len(self.scenarios) > 1:
+            self.scenario_name = self.scenarios[self.scenario_idx % len(self.scenarios)]
+            self.scenario_idx += 1
+        else:
+            self.scenario_name = self.scenarios[0]
+
+        self.config = self.config.model_copy(
+            update={"traffic_profile": self.scenario_name, "seed": self.seed_val}
+        )
+        self.simulator.config = self.config
+        self.macro_adapter.config = self.config
+
+        self.current_state = self.simulator.reset(seed=self.seed_val, config=self.config)
+        self.current_macro_step = 0
 
         obs = self.obs_adapter.build_observation(self.current_state, self.config)
         self.last_obs = obs
@@ -216,14 +243,14 @@ class SliceGymnasiumEnv(gym.Env):
     def get_mean_episode_cost(self) -> float:
         """Returns the mean critical-slice violation cost across the current episode."""
         if not self.episode_costs:
-            return 0.0
+            return self.last_completed_episode_cost
         return float(np.mean(self.episode_costs))
 
-    def update_lagrangian_multiplier(self) -> float:
+    def update_lagrangian_multiplier(self, cost: Optional[float] = None) -> float:
         """Updates the multiplier at the end of a completed episode."""
-        mean_cost = self.get_mean_episode_cost()
-        new_lambda = self.lagrangian.update(mean_cost)
-        self.active_lambda = new_lambda
+        if cost is None:
+            cost = self.get_mean_episode_cost()
+        new_lambda = self.lagrangian.update(float(cost))
         return new_lambda
 
     def inject_spike(

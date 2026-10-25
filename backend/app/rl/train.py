@@ -13,7 +13,7 @@ import csv
 import json
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union, Sequence
 import numpy as np
 
 import torch
@@ -64,13 +64,13 @@ class LagrangianCallback(BaseCallback):
         # When episode finishes (done or truncated)
         if dones and dones[0]:
             self.episode_count += 1
-            env = self.training_env.envs[0]
-            old_lambda = env.active_lambda
-            new_lambda = env.update_lagrangian_multiplier()
-
+            env = self.training_env.envs[0].unwrapped
             ep_rew = float(np.sum(self.episode_rewards))
             mean_cost = float(np.mean(self.episode_costs)) if self.episode_costs else 0.0
             mean_tput = float(np.mean(self.episode_embb_tputs)) if self.episode_embb_tputs else 0.0
+
+            old_lambda = env.active_lambda
+            new_lambda = env.update_lagrangian_multiplier(cost=mean_cost)
 
             if self.verbose > 0 and self.episode_count % 5 == 0:
                 print(
@@ -104,11 +104,15 @@ class LagrangianCallback(BaseCallback):
 def train_ppo(
     total_timesteps: int = 10000,
     seed: int = 42,
-    scenario_name: str = "normal",
+    scenario_name: Union[str, Sequence[str]] = "normal",
     max_macro_steps_per_episode: int = 100,
     cost_limit: float = 0.01,
     lagrange_lr: float = 0.05,
     output_dir: Optional[Path] = None,
+    checkpoint_filename: str = "agent.zip",
+    metadata_filename: str = "agent_metadata.json",
+    log_csv_filename: str = "log.csv",
+    artifact_filename: Optional[str] = "ppo_sla_guardian.zip",
 ) -> Tuple[PPO, Dict[str, Any]]:
     """
     Executes a CPU-based Constrained PPO training run.
@@ -116,11 +120,15 @@ def train_ppo(
     Args:
         total_timesteps: Number of macro-control steps to train.
         seed: Random seed for reproducibility.
-        scenario_name: Name of traffic profile to train on.
+        scenario_name: Name or sequence of traffic profiles to train on.
         max_macro_steps_per_episode: Episode length in macro-steps (100 ms each).
         cost_limit: Maximum allowed critical packet violation rate.
         lagrange_lr: Learning rate for dual multiplier.
-        output_dir: Directory where models/agent.zip will be saved.
+        output_dir: Directory where model checkpoints will be saved.
+        checkpoint_filename: Name of model file (e.g. 'candidate_agent.zip').
+        metadata_filename: Name of metadata file (e.g. 'candidate_metadata.json').
+        log_csv_filename: Name of training log CSV (e.g. 'candidate_log.csv').
+        artifact_filename: Optional artifact copy filename.
 
     Returns:
         Tuple of (trained PPO model, training metadata dict).
@@ -130,7 +138,7 @@ def train_ppo(
         output_dir = root_dir / "models"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    log_csv_path = root_dir / "runs" / "log.csv"
+    log_csv_path = root_dir / "runs" / log_csv_filename
 
     # Set seeds
     torch.manual_seed(seed)
@@ -138,8 +146,9 @@ def train_ppo(
 
     print("=" * 70)
     print("   SLA GUARDIAN - CONSTRAINED PPO TRAINING")
-    print(f"   Target Timesteps: {total_timesteps} | Scenario: {scenario_name} | Seed: {seed}")
+    print(f"   Target Timesteps: {total_timesteps} | Scenario(s): {scenario_name} | Seed: {seed}")
     print(f"   Hardware Device : CPU | Cost Limit: {cost_limit} | Dual LR: {lagrange_lr}")
+    print(f"   Output Model    : {checkpoint_filename} | Log: {log_csv_filename}")
     print("=" * 70)
 
     # 1. Instantiate environment
@@ -182,26 +191,28 @@ def train_ppo(
     model.learn(total_timesteps=total_timesteps, callback=callback)
     duration = time.time() - start_time
 
-    # 4. Save checkpoint to models/agent.zip
-    model_path = output_dir / "agent.zip"
+    # 4. Save checkpoint
+    model_path = output_dir / checkpoint_filename
     model.save(str(model_path))
 
-    # Also save artifact copy in backend/artifacts/rl/
-    artifacts_dir = root_dir / "backend" / "artifacts" / "rl"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
-    artifact_model_path = artifacts_dir / "ppo_sla_guardian.zip"
-    model.save(str(artifact_model_path))
+    # Also save artifact copy in backend/artifacts/rl/ if requested
+    artifact_model_path = None
+    if artifact_filename:
+        artifacts_dir = root_dir / "backend" / "artifacts" / "rl"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        artifact_model_path = artifacts_dir / artifact_filename
+        model.save(str(artifact_model_path))
 
     # 5. Metadata
     metadata = {
         "model_name": "constrained_ppo_sla_guardian",
         "saved_path": str(model_path),
-        "artifact_path": str(artifact_model_path),
+        "artifact_path": str(artifact_model_path) if artifact_model_path else None,
         "total_timesteps": total_timesteps,
         "completed_episodes": callback.episode_count,
         "training_duration_sec": round(duration, 2),
         "seed": seed,
-        "scenario": scenario_name,
+        "scenario": scenario_name if isinstance(scenario_name, str) else list(scenario_name),
         "cost_limit": cost_limit,
         "lagrange_lr": lagrange_lr,
         "final_lambda": round(env.lagrangian.value, 4),
@@ -215,16 +226,16 @@ def train_ppo(
         },
     }
 
-    meta_path = output_dir / "agent_metadata.json"
+    meta_path = output_dir / metadata_filename
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
     print("\n" + "=" * 70)
     print(f"[+] Training completed in {duration:.1f} seconds ({callback.episode_count} episodes)")
-    print(f"[+] Canonical checkpoint saved to: {model_path}")
-    print(f"[+] Metadata saved to           : {meta_path}")
-    print(f"[+] Training log CSV saved to   : {log_csv_path}")
-    print(f"[+] Final Lagrangian Lambda    : {env.lagrangian.value:.4f}")
+    print(f"[+] Checkpoint saved to     : {model_path}")
+    print(f"[+] Metadata saved to       : {meta_path}")
+    print(f"[+] Training log CSV saved to : {log_csv_path}")
+    print(f"[+] Final Lagrangian Lambda : {env.lagrangian.value:.4f}")
     print("=" * 70)
 
     return model, metadata

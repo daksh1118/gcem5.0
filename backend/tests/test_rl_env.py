@@ -173,3 +173,109 @@ def test_rl_policy_pipeline_integration(test_config):
     assert record.executed_action is not None
     assert next_state.step == 1
     assert next_state.sim_time_sec == 0.010
+
+
+# ---------------------------------------------------------------------------
+# 4. Corrective-Training Regression Tests
+# ---------------------------------------------------------------------------
+
+def test_multi_scenario_gymnasium_cycling():
+    """Verifies that SliceGymnasiumEnv properly rotates through all configured scenarios."""
+    scenarios = ["normal", "embb_surge", "urllc_burst", "murllc_storm", "mixed_stress"]
+    env = SliceGymnasiumEnv(scenario_name=scenarios, max_macro_steps=10)
+
+    visited = []
+    for _ in range(len(scenarios) * 2):
+        env.reset()
+        visited.append(env.scenario_name)
+
+    expected = scenarios * 2
+    assert visited == expected, f"Expected scenario cycle {expected}, got {visited}"
+
+
+def test_episodic_lagrangian_dual_update_with_cost():
+    """Verifies that the Lagrangian multiplier updates exactly once per episode using actual cost."""
+    env = SliceGymnasiumEnv(scenario_name="normal", max_macro_steps=10, cost_limit=0.01, lagrange_lr=0.05)
+    assert env.active_lambda == 0.0
+
+    # Step through a fake episode and verify last_completed_episode_cost is preserved on reset
+    env.episode_costs = [0.15, 0.25]
+    env.reset()
+    assert np.isclose(env.last_completed_episode_cost, 0.20)
+
+    # Calling update_lagrangian_multiplier without args uses last_completed_episode_cost
+    new_lambda = env.update_lagrangian_multiplier()
+    # Delta: 0.05 * (0.20 - 0.01) = 0.0095
+    assert np.isclose(new_lambda, 0.0095)
+    assert np.isclose(env.active_lambda, 0.0095)
+
+    # Explicit cost update
+    new_lambda2 = env.update_lagrangian_multiplier(cost=0.51)
+    # Delta: 0.05 * (0.51 - 0.01) = 0.0250 -> 0.0095 + 0.0250 = 0.0345
+    assert np.isclose(new_lambda2, 0.0345)
+
+
+def test_critical_cost_and_pdr_consistency():
+    """Verifies mathematical consistency between critical violation cost and PDR."""
+    from backend.app.rl.cost import ViolationCostAdapter
+    from backend.app.schemas.metrics import StepMetrics
+
+    adapter = ViolationCostAdapter(cost_limit=0.01)
+
+    # 80 delivered, 20 dropped on URLLC/mURLLC
+    metrics = StepMetrics(
+        step=1, sim_time_sec=0.1,
+        throughput_mbps={s: 10.0 for s in CANONICAL_SLICE_IDS},
+        p95_latency_ms={s: 5.0 for s in CANONICAL_SLICE_IDS},
+        packet_delivery_ratio={SliceId.URLLC: 0.80, SliceId.MURLLC: 0.80, SliceId.EMBB: 1.0},
+        sla_status={s: True for s in CANONICAL_SLICE_IDS},
+        sla_breach_count=0,
+        radio_utilization_ratio=0.5,
+        compute_utilization_ratio=0.5,
+        allocation_churn=0.0,
+        safety_intervention=False,
+        reward_components=None,
+        offered_packets={SliceId.EMBB: 100, SliceId.URLLC: 50, SliceId.MURLLC: 50},
+        delivered_packets={SliceId.EMBB: 100, SliceId.URLLC: 40, SliceId.MURLLC: 40},
+        dropped_packets={SliceId.EMBB: 0, SliceId.URLLC: 10, SliceId.MURLLC: 10},
+        pending_packets={s: 0 for s in CANONICAL_SLICE_IDS},
+        sla_state_details={s: "PASS" for s in CANONICAL_SLICE_IDS},
+    )
+
+    cost = adapter.compute_step_cost(metrics)
+    # Delivered critical = 80, dropped critical = 20, offered critical = 100
+    # Cost = 20 / 100 = 0.20
+    # PDR_critical = 80 / 100 = 0.80 -> Cost + PDR == 1.0
+    assert np.isclose(cost, 0.20)
+    crit_pdr = (metrics.delivered_packets[SliceId.URLLC] + metrics.delivered_packets[SliceId.MURLLC]) / 100.0
+    assert np.isclose(cost + crit_pdr, 1.0)
+
+
+def test_candidate_checkpoint_and_frozen_hash_integrity():
+    """Verifies frozen PPO checkpoint SHA-256 is unchanged and candidate model loads properly."""
+    import hashlib
+    root = Path(__file__).resolve().parent.parent.parent
+
+    # 1. Verify frozen model hash
+    frozen_path = root / "models" / "agent.zip"
+    assert frozen_path.exists(), "Frozen models/agent.zip must exist"
+    h = hashlib.sha256()
+    with open(frozen_path, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    assert h.hexdigest() == "1d21d58fe672530a1f15ad4232ca7acc5c2a2373edafe8675ee4fe39cc963e78"
+
+    # 2. Verify candidate model exists and loads into RLPolicy
+    candidate_path = root / "models" / "candidate_agent.zip"
+    assert candidate_path.exists(), "Candidate models/candidate_agent.zip must exist"
+    candidate_policy = RLPolicy(checkpoint_path=candidate_path)
+    assert candidate_policy.model is not None
+
+    # 3. Verify candidate metadata
+    meta_path = root / "models" / "candidate_metadata.json"
+    assert meta_path.exists()
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    assert meta["final_lambda"] > 0.0
+    assert len(meta["scenario"]) == 5
+    assert meta["total_timesteps"] == 15000

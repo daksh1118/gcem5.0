@@ -117,5 +117,7 @@ def test_07_chart_canvas_containers_present(client):
     res = client.get("/")
     html = res.text
     assert 'id="chartEmbbTput"' in html
+    assert 'id="chartUrllcTput"' in html
+    assert 'id="chartMurllcTput"' in html
     assert 'id="chartCriticalDrops"' in html
     assert 'id="chartUtil"' in html

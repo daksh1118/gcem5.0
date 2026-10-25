@@ -1,0 +1,6 @@
+timestamp,size_bytes,slice_id,qos_label,flow_id
+0.01,1400,eMBB,5qi_9,flow_1
+0.02,250,URLLC,5qi_1,flow_2
+0.03,800,UNKNOWN_SLICE,unmapped_dscp_99,flow_unknown_1
+0.04,500,mURLLC,5qi_79,flow_3
+0.05,1200,,,flow_unlabeled_2

@@ -28,6 +28,10 @@
         <span id="connStatusText" class="val">CONNECTING</span>
       </div>
       <div class="telemetry-pill">
+        <span class="label">Traffic:</span>
+        <span id="trafficSourceBadge" class="status-badge running">SYNTHETIC</span>
+      </div>
+      <div class="telemetry-pill">
         <span class="label">Model:</span>
         <span id="modelBadge" class="status-badge idle">CHECKING</span>
       </div>
@@ -47,38 +51,105 @@
   </header>
 
   <!-- ====================================================================
-       SCENARIO CONTROL TOOLBAR & SPIKE INJECTION
+       TRAFFIC INGESTION & RUN CONTROL TOOLBAR
        ==================================================================== -->
   <section class="control-toolbar">
-    <div class="control-group">
-      <span class="control-label">Scenario:</span>
-      <select id="scenarioSelect" title="Select 5G Traffic Profile">
-        <option value="normal">NORMAL - Balanced Nominal Load</option>
-        <option value="embb_surge">EMBB_SURGE - 4K Video Surge</option>
-        <option value="urllc_burst">URLLC_BURST - Factory Tactile Burst</option>
-        <option value="murllc_storm">MURLLC_STORM - Massive IoT Storm</option>
-        <option value="mixed_stress">MIXED_STRESS - Extreme Overload</option>
-      </select>
+    <!-- Row 1: Traffic Source Selection & Mode-Specific Inputs -->
+    <div class="toolbar-row" style="width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px;">
+      <div class="control-group">
+        <span class="control-label" style="font-weight: 700; color: #FFFFFF;">Traffic Source:</span>
+        <select id="trafficSourceTypeSelect" title="Select Input Traffic Source">
+          <option value="synthetic">Synthetic Test Profiles</option>
+          <option value="trace_replay">Recorded Trace Replay (CSV / JSONL / PCAP)</option>
+          <option value="live_telemetry">Live Network Telemetry (Prometheus / Open5GS)</option>
+        </select>
+      </div>
 
-      <span class="control-label">Seed:</span>
-      <input type="number" id="seedInput" value="42" min="1" max="99999" style="width: 60px;" title="PRNG Seed">
+      <!-- Model Checkpoint Selector -->
+      <div class="control-group">
+        <span class="control-label" style="font-weight: 700; color: #FFFFFF;">PPO Agent:</span>
+        <select id="modelCheckpointSelect" title="Select PPO Model Checkpoint">
+          <option value="frozen">Frozen PPO (Single-Scenario, λ=0.0)</option>
+          <option value="candidate">Candidate PPO (Multi-Scenario, λ=1.16)</option>
+        </select>
+      </div>
 
-      <span class="control-label">Steps:</span>
-      <input type="number" id="maxStepsInput" value="100" min="10" max="1000" style="width: 65px;" title="Macro Steps">
+      <!-- Mode 1: Synthetic Controls -->
+      <div id="syntheticControls" class="control-group">
+        <span class="control-label">Profile:</span>
+        <select id="scenarioSelect" title="Select 5G Traffic Profile">
+          <option value="normal">NORMAL - Balanced Nominal Load</option>
+          <option value="embb_surge">EMBB_SURGE - 4K Video Surge</option>
+          <option value="urllc_burst">URLLC_BURST - Factory Tactile Burst</option>
+          <option value="murllc_storm">MURLLC_STORM - Massive IoT Storm</option>
+          <option value="mixed_stress">MIXED_STRESS - Extreme Overload</option>
+        </select>
+      </div>
 
-      <button id="btnStart" class="btn btn-primary" title="Launch Experiment">▶ Start</button>
-      <button id="btnPause" class="btn" title="Pause Experiment">⏸ Pause</button>
-      <button id="btnResume" class="btn" title="Resume Experiment">⏯ Resume</button>
-      <button id="btnStep" class="btn" title="Execute single 100ms macro step">⏭ Step</button>
-      <button id="btnReset" class="btn btn-danger" title="Reset to step 0">↺ Reset</button>
+      <!-- Mode 2: Trace Replay Controls -->
+      <div id="traceControls" class="control-group" style="display: none;">
+        <span class="control-label">Trace:</span>
+        <select id="traceFileSelect" style="max-width: 240px;" title="Select available trace in data/traces/"></select>
+        <input type="file" id="traceFileInput" accept=".csv,.jsonl,.json,.pcap" style="display: none;">
+        <button id="btnUploadTrace" class="btn" title="Upload PCAP, CSV, or JSONL trace to data/traces/">⬆ Upload</button>
+        <button id="btnInspectTrace" class="btn" title="Inspect & validate trace format and slice mapping">🔍 Inspect</button>
+        <span class="control-label">Speed:</span>
+        <input type="number" id="replaySpeedInput" value="1.0" min="0.1" max="10.0" step="0.5" style="width: 55px;" title="Replay Speed Multiplier">
+      </div>
+
+      <!-- Mode 3: Live Telemetry Controls -->
+      <div id="telemetryControls" class="control-group" style="display: none;">
+        <span class="control-label">Endpoint:</span>
+        <input type="text" id="telemetryEndpointInput" value="http://127.0.0.1:9090/telemetry" placeholder="http://127.0.0.1:9090/telemetry" style="width: 220px;" title="Authorized 5G gNodeB Metrics Endpoint">
+        <span class="control-label">Provider:</span>
+        <select id="telemetryProviderSelect">
+          <option value="generic_json">Generic JSON</option>
+          <option value="prometheus">Prometheus</option>
+          <option value="open5gs">Open5GS</option>
+        </select>
+        <span class="control-label">Interval:</span>
+        <input type="number" id="pollIntervalInput" value="1.0" min="0.1" max="10.0" step="0.5" style="width: 50px;" title="Polling interval in seconds">
+        <span id="telemetryStatusPill" class="status-badge degraded" title="Telemetry health status">UNCONFIGURED</span>
+      </div>
+
+      <!-- Trace Inspection Badge / Quick Summary -->
+      <div id="traceQuickSummary" class="telemetry-pill" style="display: none; padding: 3px 8px; font-size: 11px;">
+        <span id="traceSummaryText" style="color: var(--text-secondary); font-family: var(--font-mono);"></span>
+      </div>
     </div>
 
-    <!-- Quick-Action Spikes -->
-    <div class="control-group">
-      <span class="control-label">Trigger Burst:</span>
-      <button id="btnSpikeEmbb" class="btn btn-spike btn-primary" title="Inject +100% eMBB demand surge">eMBB +100%</button>
-      <button id="btnSpikeUrllc" class="btn btn-spike btn-warning" title="Inject 4x URLLC mission-critical surge">URLLC x4</button>
-      <button id="btnSpikeMurllc" class="btn btn-spike btn-warning" title="Inject 3x mURLLC IoT sensor surge">mURLLC x3</button>
+    <!-- Row 2: Experiment Controls & Spike Injections -->
+    <div class="toolbar-row" style="width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+      <div class="control-group">
+        <span class="control-label">Seed:</span>
+        <input type="number" id="seedInput" value="42" min="1" max="99999" style="width: 60px;" title="PRNG Seed">
+
+        <span class="control-label">Steps:</span>
+        <input type="number" id="maxStepsInput" value="100" min="10" max="1000" style="width: 65px;" title="Macro Steps">
+
+        <button id="btnStart" class="btn btn-primary" title="Launch Experiment">▶ Start</button>
+        <button id="btnPause" class="btn" title="Pause Experiment">⏸ Pause</button>
+        <button id="btnResume" class="btn" title="Resume Experiment">⏯ Resume</button>
+        <button id="btnStep" class="btn" title="Execute single 100ms macro step">⏭ Step</button>
+        <button id="btnReset" class="btn btn-danger" title="Reset to step 0">↺ Reset</button>
+      </div>
+
+      <!-- Quick-Action Spikes -->
+      <div class="control-group">
+        <span class="control-label">Trigger Burst:</span>
+        <button id="btnSpikeEmbb" class="btn btn-spike btn-primary" title="Inject +100% eMBB demand surge">eMBB +100%</button>
+        <button id="btnSpikeUrllc" class="btn btn-spike btn-warning" title="Inject 4x URLLC mission-critical surge">URLLC x4</button>
+        <button id="btnSpikeMurllc" class="btn btn-spike btn-warning" title="Inject 3x mURLLC IoT sensor surge">mURLLC x3</button>
+      </div>
+    </div>
+
+    <!-- Trace Inspection Modal / Drawer -->
+    <div id="traceInspectionBox" style="display: none; width: 100%; margin-top: 8px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-focus); border-radius: var(--radius-sm); font-size: 11px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: 700; color: #FFFFFF;">📊 Trace Validation & Slice Classification Profile</span>
+        <button id="btnCloseTraceInspection" class="btn" style="padding: 2px 6px; font-size: 10px;">✕ Close</button>
+      </div>
+      <div id="traceInspectionContent" style="color: var(--text-primary); line-height: 1.6;"></div>
     </div>
   </section>
 
@@ -409,13 +480,25 @@
       <!-- Left: Interactive Comparative Time-Series Charts -->
       <div class="charts-panel">
         <div class="charts-tabs">
-          <button id="tabTput" class="tab-btn active">eMBB Delivered Throughput</button>
+          <button id="tabTput" class="tab-btn active">eMBB Throughput</button>
+          <button id="tabUrllc" class="tab-btn">URLLC Throughput</button>
+          <button id="tabMurllc" class="tab-btn">mURLLC Throughput</button>
           <button id="tabDrops" class="tab-btn">Critical Packet Violations</button>
           <button id="tabUtil" class="tab-btn">Radio Resource Utilization</button>
+          <span style="margin-left: auto; font-size: 10px; color: #F59E0B; display: flex; align-items: center; gap: 4px; padding-right: 8px;">
+            <span style="display:inline-block; width:14px; height:2px; border-top: 2px dashed #F59E0B;"></span>
+            Offered Demand (Source) vs Output
+          </span>
         </div>
 
         <div id="wrapTput" class="chart-wrapper">
           <canvas id="chartEmbbTput"></canvas>
+        </div>
+        <div id="wrapUrllc" class="chart-wrapper" style="display: none;">
+          <canvas id="chartUrllcTput"></canvas>
+        </div>
+        <div id="wrapMurllc" class="chart-wrapper" style="display: none;">
+          <canvas id="chartMurllcTput"></canvas>
         </div>
         <div id="wrapDrops" class="chart-wrapper" style="display: none;">
           <canvas id="chartCriticalDrops"></canvas>

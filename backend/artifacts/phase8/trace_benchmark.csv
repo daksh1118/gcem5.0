@@ -1,0 +1,13 @@
+trace_name,trace_format,total_trace_packets,classification_coverage,unclassified_packets,policy,seed,macro_steps,sim_time_sec,total_offered_packets,total_delivered_packets,total_dropped_packets,embb_pdr,urllc_pdr,murllc_pdr,embb_tput_mbps,urllc_tput_mbps,murllc_tput_mbps,total_tput_mbps,embb_latency_ms,urllc_latency_ms,murllc_latency_ms,critical_cost,radio_util,compute_util,allocation_churn,shield_interventions,sla_breach_ratio
+sample_5g_multi_slice_trace.csv,trace_replay,2268,1.0,0,static,42,50,5.0,1222,1222,0,1.0,1.0,1.0,1.44,0.17,0.13,1.74,9.6,9.65,9.52,0.0,0.8023,0.0174,0.0,0,1.0
+sample_5g_multi_slice_trace.csv,trace_replay,2268,1.0,0,heuristic,42,50,5.0,1222,1222,0,1.0,1.0,1.0,1.44,0.17,0.13,1.74,9.6,9.65,9.52,0.0,0.799,0.0174,1616.31,0,1.0
+sample_5g_multi_slice_trace.csv,trace_replay,2268,1.0,0,frozen_ppo,42,50,5.0,1222,1222,0,1.0,1.0,1.0,1.44,0.17,0.13,1.74,9.6,9.65,9.52,0.0,0.7929,0.0174,5.82,13,1.0
+sample_5g_multi_slice_trace.csv,trace_replay,2268,1.0,0,candidate_ppo,42,50,5.0,1222,1222,0,1.0,1.0,1.0,1.44,0.17,0.13,1.74,9.6,9.65,9.52,0.0,0.7997,0.0174,23.7,10,1.0
+sample_5g_trace.jsonl,trace_replay,1320,1.0,0,static,42,50,5.0,841,841,0,1.0,1.0,1.0,1.1,0.09,0.11,1.29,9.67,9.6,9.69,0.0,0.8023,0.0129,0.0,0,1.0
+sample_5g_trace.jsonl,trace_replay,1320,1.0,0,heuristic,42,50,5.0,841,841,0,1.0,1.0,1.0,1.1,0.09,0.11,1.29,9.67,9.6,9.69,0.0,0.8016,0.0129,656.62,0,1.0
+sample_5g_trace.jsonl,trace_replay,1320,1.0,0,frozen_ppo,42,50,5.0,841,841,0,1.0,1.0,1.0,1.1,0.09,0.11,1.29,9.67,9.6,9.69,0.0,0.7929,0.0129,3.85,8,1.0
+sample_5g_trace.jsonl,trace_replay,1320,1.0,0,candidate_ppo,42,50,5.0,841,841,0,1.0,1.0,1.0,1.1,0.09,0.11,1.29,9.67,9.6,9.69,0.0,0.7998,0.0129,18.91,17,1.0
+sample_5g_trace.pcap,trace_replay,997,1.0,0,static,42,50,5.0,997,997,0,1.0,1.0,1.0,1.33,0.11,0.11,1.54,9.55,9.69,9.66,0.0,0.8023,0.0154,0.0,0,1.0
+sample_5g_trace.pcap,trace_replay,997,1.0,0,heuristic,42,50,5.0,997,997,0,1.0,1.0,1.0,1.33,0.11,0.11,1.54,9.55,9.69,9.66,0.0,0.801,0.0154,1083.41,0,1.0
+sample_5g_trace.pcap,trace_replay,997,1.0,0,frozen_ppo,42,50,5.0,997,997,0,1.0,1.0,1.0,1.33,0.11,0.11,1.54,9.55,9.69,9.66,0.0,0.7929,0.0154,4.62,8,1.0
+sample_5g_trace.pcap,trace_replay,997,1.0,0,candidate_ppo,42,50,5.0,997,997,0,1.0,1.0,1.0,1.33,0.11,0.11,1.54,9.55,9.69,9.66,0.0,0.7997,0.0154,19.5,10,1.0

@@ -23,6 +23,7 @@ from .traffic import TrafficGenerator
 from .radio import RadioModel
 from .compute import EdgeComputeModel
 from .diagnostics import GranularSliceDiagnostics, StepDiagnostics
+from ..traffic.interface import TrafficSourceInterface, TrafficSourceType, TrafficStepArrivals
 
 
 class FallbackNetworkSimulator(SimulatorInterface):
@@ -30,12 +31,17 @@ class FallbackNetworkSimulator(SimulatorInterface):
     High-fidelity discrete-event fallback simulator for 5G network slicing.
     
     Coupled Architecture:
-    [Traffic Generator] -> [Radio Queue] -> (Radio Model: OFDMA + Fading)
-                        -> [Compute Queue] -> (Edge-Compute Model: CPU Processing)
-                        -> [Application Delivery & SLA Telemetry]
+    [Traffic Source (Trace/Live/Synthetic)] -> [Radio Queue] -> (Radio Model: OFDMA + Fading)
+                                            -> [Compute Queue] -> (Edge-Compute Model: CPU Processing)
+                                            -> [Application Delivery & SLA Telemetry]
     """
 
-    def __init__(self, config: Optional[RunConfig] = None, scenario_data: Optional[dict] = None):
+    def __init__(
+        self,
+        config: Optional[RunConfig] = None,
+        scenario_data: Optional[dict] = None,
+        traffic_source: Optional[TrafficSourceInterface] = None,
+    ):
         self.config = config or self._load_default_config()
         self.scenario_data = scenario_data or self._load_default_scenario_data()
 
@@ -43,8 +49,21 @@ class FallbackNetworkSimulator(SimulatorInterface):
         self.current_step = 0
         self.sim_time_sec = 0.0
 
-        # Sub-models
-        self.traffic_gen = TrafficGenerator(self.config, self.scenario_data, seed=self.config.seed)
+        # Sub-models & Pluggable Traffic Source
+        if traffic_source is not None:
+            self.traffic_source = traffic_source
+            self.traffic_gen = getattr(traffic_source, "generator", None)
+        else:
+            from ..traffic.synthetic_source import SyntheticTestTrafficSource
+            self.traffic_source = SyntheticTestTrafficSource(
+                config=self.config,
+                scenario_data=self.scenario_data,
+                seed=self.config.seed,
+            )
+            self.traffic_gen = self.traffic_source.generator
+
+        self.last_step_traffic: Optional[TrafficStepArrivals] = None
+
         self.radio_model = RadioModel(
             total_radio_capacity=self.config.total_radio_capacity,
             service_rate_mbps_per_unit=1.0,
@@ -93,11 +112,17 @@ class FallbackNetworkSimulator(SimulatorInterface):
             sla_thresholds=sla,
         )
 
+    def set_traffic_source(self, traffic_source: TrafficSourceInterface):
+        """Swaps or sets the active traffic source (synthetic, trace replay, or live telemetry)."""
+        self.traffic_source = traffic_source
+        self.traffic_gen = getattr(traffic_source, "generator", None)
+
     def reset(
         self,
         seed: Optional[int] = None,
         scenario: Optional[Dict[str, Any]] = None,
         config: Optional[RunConfig] = None,
+        start_time_sec: float = 0.0,
     ) -> NetworkState:
         """
         Resets all simulation components, queues, and clocks to Step 0.
@@ -105,8 +130,17 @@ class FallbackNetworkSimulator(SimulatorInterface):
         if config is not None:
             self.config = config
             self.step_duration_sec = self.config.step_duration_ms / 1000.0
+            if hasattr(self.traffic_source, "config"):
+                self.traffic_source.config = config
+            if self.traffic_gen is not None:
+                self.traffic_gen.config = config
+                self.traffic_gen.scenario_name = config.traffic_profile
         if scenario is not None:
             self.scenario_data = scenario
+            if hasattr(self.traffic_source, "scenario_data"):
+                self.traffic_source.scenario_data = scenario
+            if self.traffic_gen is not None:
+                self.traffic_gen.scenario_data = scenario
 
         effective_seed = seed if seed is not None else self.config.seed
         self.current_step = 0
@@ -119,7 +153,7 @@ class FallbackNetworkSimulator(SimulatorInterface):
             q.clear()
 
         # Reset sub-models
-        self.traffic_gen.reset(seed=effective_seed)
+        self.traffic_source.reset(seed=effective_seed, start_time_sec=start_time_sec)
         self.radio_model.reset(seed=effective_seed)
         self.compute_model.reset()
 
@@ -129,7 +163,11 @@ class FallbackNetworkSimulator(SimulatorInterface):
         # Build initial step 0 state
         slice_states: Dict[SliceId, SliceState] = {}
         for s in CANONICAL_SLICE_IDS:
-            nom_mbps = self.traffic_gen.base_rates_mbps[s]
+            if self.traffic_gen and hasattr(self.traffic_gen, "base_rates_mbps"):
+                nom_mbps = self.traffic_gen.base_rates_mbps.get(s, 10.0)
+            else:
+                meta = self.traffic_source.get_metadata()
+                nom_mbps = float(meta.slice_distribution.get(s.value, 15.0))
             self.last_offered_demand[s] = nom_mbps
             slice_states[s] = SliceState(
                 slice_id=s,
@@ -144,7 +182,7 @@ class FallbackNetworkSimulator(SimulatorInterface):
                 sla_headroom=1.0,
             )
 
-        return NetworkState(
+        self._current_state = NetworkState(
             run_id=None,
             step=0,
             sim_time_sec=0.0,
@@ -156,6 +194,7 @@ class FallbackNetworkSimulator(SimulatorInterface):
             scenario_id=self.config.scenario_id,
             seed=effective_seed,
         )
+        return self._current_state
 
     def step(
         self,
@@ -176,12 +215,14 @@ class FallbackNetworkSimulator(SimulatorInterface):
             c_expired = self.compute_queues[s].drop_expired(self.sim_time_sec)
             step_dropped_packets[s].extend(r_expired + c_expired)
 
-        # 3. Generate new packet arrivals for step
-        new_arrivals = self.traffic_gen.generate_step_arrivals(
+        # 3. Generate new packet arrivals for step from active traffic source
+        step_traffic = self.traffic_source.generate_step_arrivals(
             step=self.current_step,
             sim_time_sec=self.sim_time_sec,
             step_duration_sec=self.step_duration_sec,
         )
+        new_arrivals = step_traffic.packets
+        self.last_step_traffic = step_traffic
 
         # Enqueue new arrivals into radio queue
         for s, pkts in new_arrivals.items():
@@ -346,7 +387,15 @@ class FallbackNetworkSimulator(SimulatorInterface):
             seed=self.config.seed,
         )
 
-        return next_network_state, step_diag.to_interface_diagnostics()
+        diag = step_diag.to_interface_diagnostics()
+        if self.last_step_traffic:
+            diag.extra_info["traffic_source_type"] = self.traffic_source.source_type.value
+            diag.extra_info["unclassified_packets"] = len(self.last_step_traffic.unclassified_events)
+            diag.extra_info["unclassified_bytes"] = self.last_step_traffic.unclassified_bytes
+            diag.extra_info["is_end_of_trace"] = self.last_step_traffic.is_end_of_trace
+
+        self._current_state = next_network_state
+        return next_network_state, diag
 
     def inject_spike(
         self,
@@ -355,11 +404,37 @@ class FallbackNetworkSimulator(SimulatorInterface):
         duration_steps: int,
         start_step: Optional[int] = None,
     ):
-        """Injects a runtime traffic burst into the underlying traffic generator."""
+        """Injects a runtime traffic burst into the underlying traffic source."""
         effective_start = start_step if start_step is not None else self.current_step
-        self.traffic_gen.inject_spike(
-            target_slice=target_slice,
-            multiplier=multiplier,
-            duration_steps=duration_steps,
-            start_step=effective_start,
-        )
+        if hasattr(self.traffic_source, "inject_spike"):
+            self.traffic_source.inject_spike(
+                target_slice=target_slice,
+                multiplier=multiplier,
+                duration_steps=duration_steps,
+                start_step=effective_start,
+            )
+        elif self.traffic_gen is not None:
+            self.traffic_gen.inject_spike(
+                target_slice=target_slice,
+                multiplier=multiplier,
+                duration_steps=duration_steps,
+                start_step=effective_start,
+            )
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        """Returns simulator diagnostics including traffic source info."""
+        source_name = self.traffic_source.get_metadata().source_name if self.traffic_source else "None"
+        source_type = self.traffic_source.source_type.value if self.traffic_source else "synthetic"
+        return {
+            "traffic_source_type": source_type,
+            "traffic_source_name": source_name,
+            "current_step": self.current_step,
+            "sim_time_sec": self.sim_time_sec,
+        }
+
+    def get_state(self) -> NetworkState:
+        """Returns the current NetworkState observation."""
+        if getattr(self, "_current_state", None) is None:
+            return self.reset()
+        return self._current_state
+

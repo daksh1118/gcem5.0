@@ -1,0 +1,22 @@
+{
+  "timestamp": 1730000000.0,
+  "core_network": {
+    "active_upf_sessions": 42,
+    "smf_status": "UP",
+    "core_load_ratio": 0.45
+  },
+  "slices": {
+    "eMBB": {
+      "offered_demand_mbps": 52.4,
+      "throughput_mbps": 48.1
+    },
+    "URLLC": {
+      "offered_demand_mbps": 11.2,
+      "throughput_mbps": 11.2
+    },
+    "mURLLC": {
+      "offered_demand_mbps": 22.0,
+      "throughput_mbps": 21.5
+    }
+  }
+}

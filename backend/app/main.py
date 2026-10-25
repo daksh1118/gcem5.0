@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,6 +21,9 @@ from .schemas.telemetry import (
     SpikeRequest,
     ResetRequest,
     MultiPolicySummary,
+    TraceValidationRequest,
+    TraceValidationResponse,
+    TrafficSourceSelectionRequest,
 )
 from .services.experiment_runner import ExperimentRunner
 
@@ -166,23 +169,41 @@ def list_scenarios():
 @app.post("/runs", tags=["Experiment Control"], include_in_schema=False, status_code=status.HTTP_201_CREATED)
 async def start_run(request: RunStartRequest):
     """
-    Starts a new experiment with validated scenario, seed, and macro-step budget.
+    Starts a new experiment with validated scenario, seed, macro-step budget, and traffic source.
     Cancels and replaces any currently active run.
     """
     r = _get_runner()
-    # Validate scenario exists
-    valid_scenarios = r.raw_scenario_data.get("traffic_profiles", {}).keys()
-    if request.scenario not in valid_scenarios:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown scenario '{request.scenario}'. Valid scenarios: {list(valid_scenarios)}",
-        )
+    # If synthetic, validate scenario exists in traffic_profiles
+    if request.traffic_source_type == "synthetic":
+        valid_scenarios = r.raw_scenario_data.get("traffic_profiles", {}).keys()
+        if request.scenario not in valid_scenarios:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown scenario '{request.scenario}'. Valid scenarios: {list(valid_scenarios)}",
+            )
+    elif request.traffic_source_type == "trace_replay":
+        # Validate trace file exists
+        if not request.trace_file:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="trace_file must be specified when traffic_source_type is 'trace_replay'.",
+            )
+        trace_path = r.traces_dir / request.trace_file
+        if not trace_path.exists() and not Path(request.trace_file).exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Trace file '{request.trace_file}' not found in data/traces/.",
+            )
 
     res = await r.start_run(
         scenario=request.scenario,
         seed=request.seed,
         max_macro_steps=request.max_macro_steps,
         selected_policies=request.selected_policies,
+        traffic_source_type=request.traffic_source_type,
+        trace_file=request.trace_file,
+        telemetry_endpoint=request.telemetry_endpoint,
+        replay_speed=request.replay_speed,
     )
     return res
 
@@ -211,12 +232,116 @@ async def reset_experiment(request: Optional[ResetRequest] = None):
     r = _get_runner()
     scen = request.scenario if request else None
     seed = request.seed if request else None
-    if scen and scen not in r.raw_scenario_data.get("traffic_profiles", {}):
+    ts_type = request.traffic_source_type if request else None
+    t_file = request.trace_file if request else None
+    return await r.reset(
+        scenario=scen,
+        seed=seed,
+        traffic_source_type=ts_type,
+        trace_file=t_file,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Model Checkpoint Management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/models", tags=["Model Checkpoints"])
+def list_available_models():
+    """Lists available PPO checkpoints and active model state."""
+    r = _get_runner()
+    return {
+        "active_checkpoint": r.checkpoint_path.name,
+        "trained_lambda": r.trained_lambda,
+        "available_models": [
+            {
+                "key": "frozen",
+                "filename": "agent.zip",
+                "label": "Frozen Baseline PPO (Single-Scenario, lambda=0.0)",
+                "active": r.checkpoint_path.name == "agent.zip",
+            },
+            {
+                "key": "candidate",
+                "filename": "candidate_agent.zip",
+                "label": "Candidate Remediated PPO (Multi-Scenario, lambda=1.1646)",
+                "active": r.checkpoint_path.name == "candidate_agent.zip",
+            },
+        ],
+    }
+
+
+@app.post("/api/models/select", tags=["Model Checkpoints"])
+def select_model_checkpoint(payload: Dict[str, str]):
+    """Switches active PPO model checkpoint between 'frozen' and 'candidate'."""
+    r = _get_runner()
+    model_key = payload.get("model", "frozen")
+    return r.switch_model_checkpoint(model_key)
+
+
+# ---------------------------------------------------------------------------
+# Traffic Sources & Trace Ingestion Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/traffic/sources", tags=["Traffic Sources"])
+def list_traffic_sources():
+    """Lists available synthetic scenarios, recorded traces in data/traces/, and live telemetry status."""
+    r = _get_runner()
+    return r.list_traffic_sources()
+
+
+@app.get("/api/traffic/status", tags=["Traffic Sources"])
+def get_traffic_status():
+    """Returns metadata and health for the currently active traffic source."""
+    r = _get_runner()
+    return r.get_traffic_status()
+
+
+@app.post("/api/traffic/validate-trace", tags=["Traffic Sources"], response_model=TraceValidationResponse)
+def validate_trace(request: TraceValidationRequest):
+    """Validates trace formatting, time range, sample count, and slice classification coverage."""
+    r = _get_runner()
+    try:
+        res = r.validate_trace_file(request.file_name, request.qos_mapping)
+        return TraceValidationResponse(**res)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.post("/api/traffic/upload-trace", tags=["Traffic Sources"])
+async def upload_trace_file(file: UploadFile = File(...)):
+    """Uploads a recorded trace file (CSV, JSONL, or PCAP) into data/traces/."""
+    r = _get_runner()
+    filename = Path(file.filename).name
+    if not any(filename.lower().endswith(ext) for ext in (".csv", ".tsv", ".jsonl", ".ndjson", ".json", ".pcap")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown scenario '{scen}'.",
+            detail=f"Unsupported file format for '{filename}'. Supported: .csv, .jsonl, .json, .pcap",
         )
-    return await r.reset(scenario=scen, seed=seed)
+
+    out_path = r.traces_dir / filename
+    content = await file.read()
+    with open(out_path, "wb") as f:
+        f.write(content)
+
+    # Automatically validate uploaded file
+    try:
+        validation = r.validate_trace_file(filename)
+        return {
+            "status": "uploaded",
+            "file_name": filename,
+            "size_bytes": len(content),
+            "valid": validation.get("valid", True),
+            "validation": validation,
+        }
+    except Exception as e:
+        return {
+            "status": "uploaded_with_warnings",
+            "file_name": filename,
+            "size_bytes": len(content),
+            "error": str(e),
+        }
 
 
 @app.post("/api/spike", tags=["Experiment Control"])
